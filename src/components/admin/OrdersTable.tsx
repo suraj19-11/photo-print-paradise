@@ -150,7 +150,7 @@ const OrdersTable = () => {
                   </TableCell>
                   <TableCell className="hidden md:table-cell">{order.date}</TableCell>
                   <TableCell className="hidden md:table-cell">{order.items}</TableCell>
-                  <TableCell>${order.total.toFixed(2)}</TableCell>
+                  <TableCell>₹{order.total.toFixed(2)}</TableCell>
                   <TableCell>
                     <Badge className={`${getStatusColor(order.status)} capitalize`}>
                       {order.status}

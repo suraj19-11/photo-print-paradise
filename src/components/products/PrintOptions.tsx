@@ -54,7 +54,7 @@ const PrintOptions = () => {
                 <RadioGroupItem value={size.id} id={size.id} />
                 <Label htmlFor={size.id} className="flex justify-between w-full">
                   <span>{size.name}</span>
-                  <span className="text-gray-500">${size.price.toFixed(2)}</span>
+                  <span className="text-gray-500">₹{size.price.toFixed(2)}</span>
                 </Label>
               </div>
             ))}
@@ -75,7 +75,7 @@ const PrintOptions = () => {
                 <Label htmlFor={paper.id} className="flex justify-between w-full">
                   <span>{paper.name}</span>
                   {paper.price > 0 && (
-                    <span className="text-gray-500">+${paper.price.toFixed(2)}</span>
+                    <span className="text-gray-500">+₹{paper.price.toFixed(2)}</span>
                   )}
                 </Label>
               </div>
@@ -109,7 +109,7 @@ const PrintOptions = () => {
           <div className="flex justify-between mb-2">
             <span className="text-gray-600">Price per print:</span>
             <span className="font-medium">
-              ${(Number(calculatePrice()) / quantity).toFixed(2)}
+              ₹{(Number(calculatePrice()) / quantity).toFixed(2)}
             </span>
           </div>
           <div className="flex justify-between mb-2">
@@ -118,7 +118,7 @@ const PrintOptions = () => {
           </div>
           <div className="flex justify-between pt-2 border-t border-gray-200">
             <span className="font-semibold">Total:</span>
-            <span className="font-semibold">${calculatePrice()}</span>
+            <span className="font-semibold">₹{calculatePrice()}</span>
           </div>
         </div>
 
