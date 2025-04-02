@@ -1,12 +1,12 @@
 
 import { useState } from 'react';
-import { Tab } from '@headlessui/react';
 import { Image as ImageIcon, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import PhotoUploader from '@/components/uploader/PhotoUploader';
 import PrintOptions from '@/components/products/PrintOptions';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Upload = () => {
   return (
@@ -23,54 +23,39 @@ const Upload = () => {
               </p>
             </div>
             
-            <Tab.Group>
-              <Tab.List className="flex space-x-2 rounded-xl bg-white p-1 mb-8 shadow-sm border">
-                {['Photos', 'Documents'].map((category) => (
-                  <Tab
-                    key={category}
-                    className={({ selected }) =>
-                      cn(
-                        'w-full rounded-lg py-3 px-4 text-sm font-medium flex items-center justify-center',
-                        'focus:outline-none focus:ring-2 focus:ring-primary/50',
-                        selected
-                          ? 'bg-primary text-white shadow-sm'
-                          : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                      )
-                    }
-                  >
-                    {category === 'Photos' ? (
-                      <ImageIcon className="h-5 w-5 mr-2" />
-                    ) : (
-                      <FileText className="h-5 w-5 mr-2" />
-                    )}
-                    {category}
-                  </Tab>
-                ))}
-              </Tab.List>
+            <Tabs defaultValue="photos">
+              <TabsList className="w-full mb-8">
+                <TabsTrigger value="photos" className="flex items-center justify-center w-full">
+                  <ImageIcon className="h-5 w-5 mr-2" />
+                  Photos
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="flex items-center justify-center w-full">
+                  <FileText className="h-5 w-5 mr-2" />
+                  Documents
+                </TabsTrigger>
+              </TabsList>
               
-              <Tab.Panels>
-                <Tab.Panel className="rounded-xl bg-white p-6 shadow-sm border">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2">
-                      <PhotoUploader />
-                    </div>
-                    <div>
-                      <PrintOptions />
-                    </div>
+              <TabsContent value="photos" className="rounded-xl bg-white p-6 shadow-sm border">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="lg:col-span-2">
+                    <PhotoUploader />
                   </div>
-                </Tab.Panel>
-                <Tab.Panel className="rounded-xl bg-white p-6 shadow-sm border">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2">
-                      <PhotoUploader />
-                    </div>
-                    <div>
-                      <PrintOptions />
-                    </div>
+                  <div>
+                    <PrintOptions />
                   </div>
-                </Tab.Panel>
-              </Tab.Panels>
-            </Tab.Group>
+                </div>
+              </TabsContent>
+              <TabsContent value="documents" className="rounded-xl bg-white p-6 shadow-sm border">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="lg:col-span-2">
+                    <PhotoUploader />
+                  </div>
+                  <div>
+                    <PrintOptions />
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </main>
