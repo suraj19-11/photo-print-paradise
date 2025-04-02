@@ -10,7 +10,7 @@ import {
   DollarSign, 
   ArrowUpRight, 
   ArrowDownRight, 
-  Photo 
+  Image 
 } from 'lucide-react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
 import OrdersTable from '@/components/admin/OrdersTable';
@@ -112,7 +112,7 @@ const AdminDashboard = () => {
               <div className="flex items-center justify-between mb-4">
                 <div className="text-gray-500">Photos Printed</div>
                 <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center">
-                  <Photo className="h-5 w-5 text-amber-600" />
+                  <Image className="h-5 w-5 text-amber-600" />
                 </div>
               </div>
               <div className="flex items-baseline space-x-2">
