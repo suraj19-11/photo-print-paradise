@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { Printer, ArrowLeft, Download, Clock, Truck, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,9 +11,11 @@ import Footer from '@/components/layout/Footer';
 import OrderSummary from '@/components/orders/OrderSummary';
 
 const OrderDetails = () => {
-  // Sample order data
+  const { id } = useParams<{ id: string }>();
+  
+  // Sample order data - in a real app, this would come from an API
   const order = {
-    id: 'ORD-1234',
+    id: id || 'ORD-1234',
     date: 'May 15, 2023',
     status: 'processing',
     items: [
@@ -63,7 +65,7 @@ const OrderDetails = () => {
         <div className="container mx-auto px-4 md:px-6">
           <div className="max-w-6xl mx-auto">
             <div className="flex items-center mb-8">
-              <Link to="/account/orders" className="flex items-center text-primary hover:underline mr-4">
+              <Link to="/" className="flex items-center text-primary hover:underline mr-4">
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 Back to Orders
               </Link>
