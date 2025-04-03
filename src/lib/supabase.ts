@@ -1,13 +1,15 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// For development and testing purposes only
+// In production, these should be environment variables
+const fallbackSupabaseUrl = 'https://your-supabase-project-url.supabase.co';
+const fallbackSupabaseKey = 'your-supabase-anon-key';
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Supabase URL and key must be provided');
-}
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || fallbackSupabaseUrl;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || fallbackSupabaseKey;
 
+// Initialize the Supabase client
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Define the type for user profiles

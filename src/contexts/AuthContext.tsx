@@ -23,39 +23,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-        checkAdminStatus(session.user.id);
-      } else {
+    // Handle potential Supabase connection issues
+    try {
+      // Get initial session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchUserProfile(session.user.id);
+          checkAdminStatus(session.user.id);
+        } else {
+          setIsLoading(false);
+        }
+      }).catch(error => {
+        console.error('Error connecting to Supabase:', error);
+        setConnectionError('Could not connect to the backend service');
         setIsLoading(false);
-      }
-    });
+        
+        toast({
+          variant: "destructive",
+          title: "Connection Error",
+          description: "Could not connect to the backend service. Please try again later.",
+        });
+      });
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      // Listen for auth changes
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          fetchUserProfile(session.user.id);
+          checkAdminStatus(session.user.id);
+        } else {
+          setProfile(null);
+          setIsAdmin(false);
+          setIsLoading(false);
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    } catch (error) {
+      console.error('Fatal error connecting to Supabase:', error);
+      setConnectionError('Could not initialize the backend service');
+      setIsLoading(false);
       
-      if (session?.user) {
-        fetchUserProfile(session.user.id);
-        checkAdminStatus(session.user.id);
-      } else {
-        setProfile(null);
-        setIsAdmin(false);
-        setIsLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+      toast({
+        variant: "destructive",
+        title: "Connection Error",
+        description: "Could not initialize the backend service. Please check your configuration.",
+      });
+    }
   }, []);
 
   const fetchUserProfile = async (userId: string) => {
@@ -176,6 +200,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isAdmin,
   };
 
+  // If there's a connection error, we still render the children but with default values
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
