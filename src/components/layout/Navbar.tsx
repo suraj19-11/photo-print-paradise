@@ -1,12 +1,19 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X, ShoppingCart, User } from 'lucide-react';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Replace with actual auth logic later
+  const navigate = useNavigate();
+
+  const handleAdminLogin = () => {
+    // In a real app, this would check credentials
+    setIsLoggedIn(true);
+    navigate('/admin');
+  };
 
   return (
     <nav className="bg-white shadow-sm py-4">
@@ -33,13 +40,21 @@ const Navbar = () => {
             <Link to="/contact" className="text-gray-700 hover:text-primary transition-colors">
               Contact
             </Link>
+            {isLoggedIn && (
+              <Link to="/admin" className="text-gray-700 hover:text-primary transition-colors">
+                Admin Dashboard
+              </Link>
+            )}
+            <Link to="/order/sample-order" className="text-gray-700 hover:text-primary transition-colors">
+              Track Order
+            </Link>
           </div>
           
           <div className="hidden md:flex items-center space-x-4">
-            <Link to="/cart">
+            <Link to="/order/cart123">
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">2</span>
               </Button>
             </Link>
             
@@ -62,16 +77,19 @@ const Navbar = () => {
                 <Link to="/register">
                   <Button>Sign Up</Button>
                 </Link>
+                <Button variant="link" onClick={handleAdminLogin}>
+                  Admin Access
+                </Button>
               </div>
             )}
           </div>
           
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
-            <Link to="/cart" className="mr-4">
+            <Link to="/order/cart123" className="mr-4">
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">2</span>
               </Button>
             </Link>
             <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
@@ -96,6 +114,14 @@ const Navbar = () => {
               <Link to="/contact" className="text-gray-700 hover:text-primary py-2 transition-colors">
                 Contact
               </Link>
+              {isLoggedIn && (
+                <Link to="/admin" className="text-gray-700 hover:text-primary py-2 transition-colors">
+                  Admin Dashboard
+                </Link>
+              )}
+              <Link to="/order/sample-order" className="text-gray-700 hover:text-primary py-2 transition-colors">
+                Track Order
+              </Link>
               
               {isLoggedIn ? (
                 <>
@@ -114,6 +140,9 @@ const Navbar = () => {
                   <Link to="/register">
                     <Button className="w-full">Sign Up</Button>
                   </Link>
+                  <Button variant="link" onClick={handleAdminLogin} className="w-full">
+                    Admin Access
+                  </Button>
                 </>
               )}
             </div>

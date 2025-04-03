@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { useToast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
 
 // Print size options
 const sizes = [
@@ -29,11 +31,30 @@ const PrintOptions = () => {
   const [selectedSize, setSelectedSize] = useState(sizes[0].id);
   const [selectedPaper, setSelectedPaper] = useState(paperTypes[0].id);
   const [quantity, setQuantity] = useState(1);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   const calculatePrice = () => {
     const sizePrice = sizes.find(size => size.id === selectedSize)?.price || 0;
     const paperPrice = paperTypes.find(paper => paper.id === selectedPaper)?.price || 0;
     return ((sizePrice + paperPrice) * quantity).toFixed(2);
+  };
+
+  const handleAddToCart = () => {
+    const size = sizes.find(size => size.id === selectedSize)?.name;
+    const paper = paperTypes.find(paper => paper.id === selectedPaper)?.name;
+    
+    // In a real app, you would dispatch to a cart state/context/store
+    // For now, we'll just show a toast notification
+    toast({
+      title: "Added to cart",
+      description: `${quantity} ${size} ${paper} print(s) added to your cart`,
+    });
+    
+    // Simulate adding to cart by navigating to an order page
+    setTimeout(() => {
+      navigate('/order/cart123');
+    }, 1500);
   };
 
   return (
@@ -122,7 +143,7 @@ const PrintOptions = () => {
           </div>
         </div>
 
-        <Button className="w-full">Add to Cart</Button>
+        <Button className="w-full" onClick={handleAddToCart}>Add to Cart</Button>
       </CardContent>
     </Card>
   );

@@ -11,6 +11,9 @@ import Register from "./pages/Register";
 import OrderDetails from "./pages/OrderDetails";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
+import Services from "./pages/Services";
+import Pricing from "./pages/Pricing";
+import HowItWorks from "./pages/HowItWorks";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +31,9 @@ const App = () => (
           <Route path="/order/:id" element={<OrderDetails />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/orders" element={<AdminDashboard />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
