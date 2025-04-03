@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,8 +10,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
-// Fixed form schema to allow boolean instead of literal true
 const formSchema = z.object({
   firstName: z.string().min(2, { message: 'First name is required' }),
   lastName: z.string().min(2, { message: 'Last name is required' }),
@@ -27,6 +26,8 @@ type FormValues = z.infer<typeof formSchema>;
 
 const RegisterForm = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const { signUp } = useAuth();
+  const navigate = useNavigate();
   
   const {
     register,
@@ -47,22 +48,30 @@ const RegisterForm = () => {
     setIsLoading(true);
     
     try {
-      // Simulating API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const { error } = await signUp(
+        data.email, 
+        data.password, 
+        { 
+          firstName: data.firstName, 
+          lastName: data.lastName 
+        }
+      );
       
-      console.log('Registration data:', data);
+      if (error) {
+        throw error;
+      }
       
       toast({
         title: "Registration successful",
         description: "Welcome to PrintParadise! You can now sign in.",
       });
       
-      // Redirect to login page
-    } catch (error) {
+      navigate('/login');
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Registration failed",
-        description: "An error occurred during registration. Please try again.",
+        description: error.message || "An error occurred during registration. Please try again.",
       });
     } finally {
       setIsLoading(false);

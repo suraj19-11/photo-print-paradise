@@ -1,20 +1,17 @@
+
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X, ShoppingCart, User } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
+  const { user, profile, isAdmin, signOut } = useAuth();
 
-  const handleAdminLogin = () => {
-    setIsLoggedIn(true);
-    navigate('/admin');
-  };
-
-  const handleLogout = () => {
-    setIsLoggedIn(false);
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 
@@ -40,9 +37,14 @@ const Navbar = () => {
             <Link to="/how-it-works" className="text-gray-700 hover:text-primary transition-colors">
               How It Works
             </Link>
-            {isLoggedIn && (
+            {isAdmin && (
               <Link to="/admin" className="text-gray-700 hover:text-primary transition-colors">
                 Admin Dashboard
+              </Link>
+            )}
+            {user && (
+              <Link to="/upload" className="text-gray-700 hover:text-primary transition-colors">
+                Upload Photos
               </Link>
             )}
             <Link to="/order/track" className="text-gray-700 hover:text-primary transition-colors">
@@ -58,13 +60,20 @@ const Navbar = () => {
               </Button>
             </Link>
             
-            {isLoggedIn ? (
+            {user ? (
               <div className="flex items-center space-x-4">
-                <Link to="/admin">
-                  <Button variant="ghost" size="icon">
-                    <User className="h-5 w-5" />
-                  </Button>
-                </Link>
+                {isAdmin && (
+                  <Link to="/admin">
+                    <Button variant="ghost" size="icon">
+                      <User className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                )}
+                <Button variant="ghost" className="flex items-center">
+                  <span className="mr-2">
+                    {profile?.first_name || user.email}
+                  </span>
+                </Button>
                 <Button variant="outline" onClick={handleLogout}>
                   Logout
                 </Button>
@@ -77,9 +86,6 @@ const Navbar = () => {
                 <Link to="/register">
                   <Button>Sign Up</Button>
                 </Link>
-                <Button variant="link" onClick={handleAdminLogin}>
-                  Admin Access
-                </Button>
               </div>
             )}
           </div>
@@ -111,20 +117,27 @@ const Navbar = () => {
               <Link to="/how-it-works" className="text-gray-700 hover:text-primary py-2 transition-colors">
                 How It Works
               </Link>
-              {isLoggedIn && (
+              {isAdmin && (
                 <Link to="/admin" className="text-gray-700 hover:text-primary py-2 transition-colors">
                   Admin Dashboard
+                </Link>
+              )}
+              {user && (
+                <Link to="/upload" className="text-gray-700 hover:text-primary py-2 transition-colors">
+                  Upload Photos
                 </Link>
               )}
               <Link to="/order/track" className="text-gray-700 hover:text-primary py-2 transition-colors">
                 Track Order
               </Link>
               
-              {isLoggedIn ? (
+              {user ? (
                 <>
-                  <Link to="/admin" className="text-gray-700 hover:text-primary py-2 transition-colors">
-                    Admin Panel
-                  </Link>
+                  {isAdmin && (
+                    <Link to="/admin" className="text-gray-700 hover:text-primary py-2 transition-colors">
+                      Admin Panel
+                    </Link>
+                  )}
                   <Button variant="outline" className="w-full" onClick={handleLogout}>
                     Logout
                   </Button>
@@ -137,9 +150,6 @@ const Navbar = () => {
                   <Link to="/register">
                     <Button className="w-full">Sign Up</Button>
                   </Link>
-                  <Button variant="link" onClick={handleAdminLogin} className="w-full">
-                    Admin Access
-                  </Button>
                 </>
               )}
             </div>

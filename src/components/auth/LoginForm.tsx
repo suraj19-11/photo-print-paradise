@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from '@/components/ui/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address' }),
@@ -22,6 +22,8 @@ type FormValues = z.infer<typeof formSchema>;
 
 const LoginForm = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
   
   const {
     register,
@@ -40,22 +42,23 @@ const LoginForm = () => {
     setIsLoading(true);
     
     try {
-      // Simulating API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const { error } = await signIn(data.email, data.password);
       
-      console.log('Login data:', data);
+      if (error) {
+        throw error;
+      }
       
       toast({
         title: "Login successful",
         description: "Welcome back to PrintParadise!",
       });
       
-      // Redirect to dashboard or home page
-    } catch (error) {
+      navigate('/');
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: "Please check your email and password.",
+        description: error.message || "Please check your email and password.",
       });
     } finally {
       setIsLoading(false);

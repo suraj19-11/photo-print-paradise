@@ -1,5 +1,5 @@
 
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   ShoppingCart, 
@@ -12,9 +12,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AdminSidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -26,9 +29,9 @@ const AdminSidebar = () => {
     { name: 'Help', href: '/admin/help', icon: HelpCircle },
   ];
 
-  const handleSignOut = () => {
-    // Add sign out logic here
-    window.location.href = '/';
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
   };
   
   return (
