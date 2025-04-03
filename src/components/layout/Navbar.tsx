@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,13 +5,17 @@ import { Menu, X, ShoppingCart, User } from 'lucide-react';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Replace with actual auth logic later
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
 
   const handleAdminLogin = () => {
-    // In a real app, this would check credentials
     setIsLoggedIn(true);
     navigate('/admin');
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    navigate('/');
   };
 
   return (
@@ -37,35 +40,32 @@ const Navbar = () => {
             <Link to="/how-it-works" className="text-gray-700 hover:text-primary transition-colors">
               How It Works
             </Link>
-            <Link to="/contact" className="text-gray-700 hover:text-primary transition-colors">
-              Contact
-            </Link>
             {isLoggedIn && (
               <Link to="/admin" className="text-gray-700 hover:text-primary transition-colors">
                 Admin Dashboard
               </Link>
             )}
-            <Link to="/order/sample-order" className="text-gray-700 hover:text-primary transition-colors">
+            <Link to="/order/track" className="text-gray-700 hover:text-primary transition-colors">
               Track Order
             </Link>
           </div>
           
           <div className="hidden md:flex items-center space-x-4">
-            <Link to="/order/cart123">
+            <Link to="/cart">
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">2</span>
+                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
               </Button>
             </Link>
             
             {isLoggedIn ? (
               <div className="flex items-center space-x-4">
-                <Link to="/account">
+                <Link to="/admin">
                   <Button variant="ghost" size="icon">
                     <User className="h-5 w-5" />
                   </Button>
                 </Link>
-                <Button variant="outline" onClick={() => setIsLoggedIn(false)}>
+                <Button variant="outline" onClick={handleLogout}>
                   Logout
                 </Button>
               </div>
@@ -86,10 +86,10 @@ const Navbar = () => {
           
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center">
-            <Link to="/order/cart123" className="mr-4">
+            <Link to="/cart" className="mr-4">
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">2</span>
+                <span className="absolute -top-1 -right-1 bg-primary text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
               </Button>
             </Link>
             <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
@@ -111,24 +111,21 @@ const Navbar = () => {
               <Link to="/how-it-works" className="text-gray-700 hover:text-primary py-2 transition-colors">
                 How It Works
               </Link>
-              <Link to="/contact" className="text-gray-700 hover:text-primary py-2 transition-colors">
-                Contact
-              </Link>
               {isLoggedIn && (
                 <Link to="/admin" className="text-gray-700 hover:text-primary py-2 transition-colors">
                   Admin Dashboard
                 </Link>
               )}
-              <Link to="/order/sample-order" className="text-gray-700 hover:text-primary py-2 transition-colors">
+              <Link to="/order/track" className="text-gray-700 hover:text-primary py-2 transition-colors">
                 Track Order
               </Link>
               
               {isLoggedIn ? (
                 <>
-                  <Link to="/account" className="text-gray-700 hover:text-primary py-2 transition-colors">
-                    My Account
+                  <Link to="/admin" className="text-gray-700 hover:text-primary py-2 transition-colors">
+                    Admin Panel
                   </Link>
-                  <Button variant="outline" className="w-full" onClick={() => setIsLoggedIn(false)}>
+                  <Button variant="outline" className="w-full" onClick={handleLogout}>
                     Logout
                   </Button>
                 </>

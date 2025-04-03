@@ -25,6 +25,11 @@ const AdminSidebar = () => {
     { name: 'Settings', href: '/admin/settings', icon: Settings },
     { name: 'Help', href: '/admin/help', icon: HelpCircle },
   ];
+
+  const handleSignOut = () => {
+    // Add sign out logic here
+    window.location.href = '/';
+  };
   
   return (
     <div className="h-screen flex flex-col border-r bg-white">
@@ -61,7 +66,7 @@ const AdminSidebar = () => {
         </nav>
         
         <div className="px-4 mt-6">
-          <Button variant="outline" className="w-full justify-start text-gray-700">
+          <Button variant="outline" className="w-full justify-start text-gray-700" onClick={handleSignOut}>
             <LogOut className="mr-3 h-5 w-5" />
             Sign Out
           </Button>
