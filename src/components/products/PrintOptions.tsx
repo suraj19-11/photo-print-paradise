@@ -48,10 +48,24 @@ const PrintOptions = () => {
   useEffect(() => {
     // Initialize Razorpay when the component mounts
     const initRazorpay = async () => {
-      const ready = await initializeRazorpay();
-      setIsRazorpayReady(ready);
-      
-      if (!ready) {
+      try {
+        console.log("Initializing Razorpay...");
+        const ready = await initializeRazorpay();
+        setIsRazorpayReady(ready);
+        
+        if (!ready) {
+          console.error("Failed to initialize Razorpay");
+          toast({
+            title: "Payment service unavailable",
+            description: "Unable to load payment service. Please try again later.",
+            variant: "destructive"
+          });
+        } else {
+          console.log("Razorpay initialized successfully");
+        }
+      } catch (error) {
+        console.error("Error initializing Razorpay:", error);
+        setIsRazorpayReady(false);
         toast({
           title: "Payment service unavailable",
           description: "Unable to load payment service. Please try again later.",
@@ -61,7 +75,7 @@ const PrintOptions = () => {
     };
     
     initRazorpay();
-  }, []);
+  }, [toast]);
 
   const calculatePrice = () => {
     const sizePrice = sizes.find(size => size.id === selectedSize)?.price || 0;
@@ -71,12 +85,18 @@ const PrintOptions = () => {
 
   const handlePayment = async () => {
     if (!isRazorpayReady) {
-      toast({
-        title: "Payment service unavailable",
-        description: "Please try again later.",
-        variant: "destructive"
-      });
-      return;
+      // Try to initialize Razorpay again
+      const ready = await initializeRazorpay();
+      setIsRazorpayReady(ready);
+      
+      if (!ready) {
+        toast({
+          title: "Payment service unavailable",
+          description: "Please try again later.",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     if (!user) {
@@ -97,11 +117,14 @@ const PrintOptions = () => {
       const paper = paperTypes.find(paper => paper.id === selectedPaper)?.name;
       const totalAmount = parseFloat(calculatePrice());
       
+      console.log("Creating Razorpay order for amount:", totalAmount);
       // Create a Razorpay order
       const orderResponse = await createRazorpayOrder(
         totalAmount, 
         `PRINT-${Date.now()}`
       );
+      
+      console.log("Order created:", orderResponse);
       
       // Initialize the payment
       initiateRazorpayPayment({

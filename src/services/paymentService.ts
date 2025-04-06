@@ -1,5 +1,6 @@
 
 import { loadScript } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 declare global {
   interface Window {
@@ -39,7 +40,18 @@ export interface CreateOrderResponse {
 
 // Initialize Razorpay
 export const initializeRazorpay = async (): Promise<boolean> => {
-  return loadScript('https://checkout.razorpay.com/v1/checkout.js');
+  try {
+    // First check if Razorpay is already loaded
+    if (window.Razorpay) {
+      return true;
+    }
+    
+    // If not loaded, attempt to load the script
+    return await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+  } catch (error) {
+    console.error('Error initializing Razorpay:', error);
+    return false;
+  }
 };
 
 // Create a Razorpay order (typically this would be done server-side)
@@ -61,6 +73,12 @@ export const createRazorpayOrder = async (amount: number, receipt: string): Prom
 
 // Initialize Razorpay payment
 export const initiateRazorpayPayment = (options: PaymentOptions): void => {
+  // Ensure Razorpay is available
+  if (!window.Razorpay) {
+    console.error('Razorpay not initialized. Call initializeRazorpay first.');
+    throw new Error('Razorpay not initialized');
+  }
+  
   const razorpayOptions = {
     key: "rzp_test_LkPzjKRe2votRG", // Use the test key
     amount: options.amount,
@@ -77,7 +95,7 @@ export const initiateRazorpayPayment = (options: PaymentOptions): void => {
     const razorpay = new window.Razorpay(razorpayOptions);
     razorpay.open();
   } catch (error) {
-    console.error('Error initializing Razorpay:', error);
+    console.error('Error initializing Razorpay payment:', error);
     throw error;
   }
 };

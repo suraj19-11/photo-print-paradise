@@ -12,6 +12,11 @@ export interface CartItem {
   type: 'photo' | 'document';
 }
 
+// Custom event to notify components when cart changes
+const dispatchCartUpdatedEvent = () => {
+  window.dispatchEvent(new Event('cartUpdated'));
+};
+
 // Get all items in the cart
 export const getCartItems = (): CartItem[] => {
   try {
@@ -30,6 +35,8 @@ export const addToCart = (item: Omit<CartItem, 'id'>): CartItem => {
     const newItem = { ...item, id: uuidv4() };
     cartItems.push(newItem);
     localStorage.setItem('cartItems', JSON.stringify(cartItems));
+    // Notify listeners that cart has been updated
+    dispatchCartUpdatedEvent();
     return newItem;
   } catch (error) {
     console.error('Error adding item to cart:', error);
@@ -43,6 +50,8 @@ export const removeFromCart = (itemId: string): void => {
     const cartItems = getCartItems();
     const updatedCart = cartItems.filter(item => item.id !== itemId);
     localStorage.setItem('cartItems', JSON.stringify(updatedCart));
+    // Notify listeners that cart has been updated
+    dispatchCartUpdatedEvent();
   } catch (error) {
     console.error('Error removing item from cart:', error);
     throw error;
@@ -65,6 +74,8 @@ export const updateCartItemQuantity = (itemId: string, quantity: number): void =
     });
     
     localStorage.setItem('cartItems', JSON.stringify(updatedCart));
+    // Notify listeners that cart has been updated
+    dispatchCartUpdatedEvent();
   } catch (error) {
     console.error('Error updating cart item quantity:', error);
     throw error;
@@ -74,6 +85,8 @@ export const updateCartItemQuantity = (itemId: string, quantity: number): void =
 // Clear the entire cart
 export const clearCart = (): void => {
   localStorage.setItem('cartItems', JSON.stringify([]));
+  // Notify listeners that cart has been updated
+  dispatchCartUpdatedEvent();
 };
 
 // Get cart count
