@@ -16,13 +16,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { testConnection, isDevelopmentMode } from '@/lib/supabase';
 
+// Modified schema to correctly handle the acceptTerms field
 const formSchema = z.object({
   firstName: z.string().min(2, { message: 'First name is required' }),
   lastName: z.string().min(2, { message: 'Last name is required' }),
   email: z.string().email({ message: 'Please enter a valid email address' }),
   password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
-  acceptTerms: z.literal(true, {
-    errorMap: () => ({ message: 'You must accept the terms and conditions to register' }),
+  acceptTerms: z.boolean().refine(val => val === true, {
+    message: 'You must accept the terms and conditions to register',
   }),
 });
 
