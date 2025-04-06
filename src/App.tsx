@@ -19,6 +19,20 @@ import Privacy from "./pages/Privacy";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminRoute from "./components/auth/AdminRoute";
+// New page imports
+import PhotoPrints from "./pages/services/PhotoPrints";
+import DocumentPrinting from "./pages/services/DocumentPrinting";
+import CanvasPrints from "./pages/services/CanvasPrints";
+import PhotoBooks from "./pages/services/PhotoBooks";
+import LargeFormat from "./pages/services/LargeFormat";
+import Faq from "./pages/support/Faq";
+import Shipping from "./pages/support/Shipping";
+import Returns from "./pages/support/Returns";
+import Contact from "./pages/support/Contact";
+import Help from "./pages/support/Help";
+import About from "./pages/company/About";
+import Careers from "./pages/company/Careers";
+import Blog from "./pages/company/Blog";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +97,26 @@ const App = () => (
             <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/privacy" element={<Privacy />} />
+
+            {/* Service pages */}
+            <Route path="/services/photo-prints" element={<PhotoPrints />} />
+            <Route path="/services/document-printing" element={<DocumentPrinting />} />
+            <Route path="/services/canvas-prints" element={<CanvasPrints />} />
+            <Route path="/services/photo-books" element={<PhotoBooks />} />
+            <Route path="/services/large-format" element={<LargeFormat />} />
+
+            {/* Support pages */}
+            <Route path="/faq" element={<Faq />} />
+            <Route path="/shipping" element={<Shipping />} />
+            <Route path="/returns" element={<Returns />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/help" element={<Help />} />
+
+            {/* Company pages */}
+            <Route path="/about" element={<About />} />
+            <Route path="/careers" element={<Careers />} />
+            <Route path="/blog" element={<Blog />} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
@@ -92,3 +126,4 @@ const App = () => (
 );
 
 export default App;
+
