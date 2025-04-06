@@ -9,6 +9,8 @@ export interface CartItem {
   quantity: number;
   price: number;
   imageUrl?: string;
+  fileUrl?: string; // Add fileUrl for document items
+  fileName?: string; // Add fileName for better display
   type: 'photo' | 'document';
 }
 
@@ -33,6 +35,14 @@ export const addToCart = (item: Omit<CartItem, 'id'>): CartItem => {
   try {
     const cartItems = getCartItems();
     const newItem = { ...item, id: uuidv4() };
+    
+    // Ensure the file URLs are properly stored for both photos and documents
+    if (item.type === 'photo' && item.imageUrl) {
+      console.log("Adding photo to cart with URL:", item.imageUrl);
+    } else if (item.type === 'document' && item.fileUrl) {
+      console.log("Adding document to cart with URL:", item.fileUrl);
+    }
+    
     cartItems.push(newItem);
     localStorage.setItem('cartItems', JSON.stringify(cartItems));
     // Notify listeners that cart has been updated

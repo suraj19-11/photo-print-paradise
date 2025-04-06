@@ -1,11 +1,13 @@
 
 import { useState, useCallback, useEffect } from 'react';
-import { Upload, X, Check, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Upload, X, Check, Image as ImageIcon, Loader2, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { uploadPhoto, getUserPhotos, deletePhoto } from '@/services/photoService';
 import { useAuth } from '@/contexts/AuthContext';
 import { Photo } from '@/lib/supabase';
+import PrintOptions from '@/components/products/PrintOptions';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -22,6 +24,8 @@ const PhotoUploader = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedPhoto, setSelectedPhoto] = useState<UploadedPhoto | null>(null);
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const { user } = useAuth();
 
   // Load user's existing photos on component mount
@@ -30,6 +34,7 @@ const PhotoUploader = () => {
       if (user?.id) {
         try {
           const photos = await getUserPhotos(user.id);
+          console.log("Loaded photos:", photos);
           setUploadedPhotos(photos);
         } catch (error) {
           console.error('Error loading photos:', error);
@@ -178,6 +183,11 @@ const PhotoUploader = () => {
     }
   };
 
+  const handlePrintPhoto = (photo: UploadedPhoto) => {
+    setSelectedPhoto(photo);
+    setIsPrintDialogOpen(true);
+  };
+
   return (
     <div className="w-full max-w-3xl mx-auto">
       <div 
@@ -286,7 +296,7 @@ const PhotoUploader = () => {
                       alt={photo.file_name}
                       className="w-full aspect-square object-cover"
                     />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <Button 
                         variant="destructive" 
                         size="icon" 
@@ -294,6 +304,14 @@ const PhotoUploader = () => {
                         onClick={() => handleRemoveUploadedPhoto(photo.id)}
                       >
                         <X className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="secondary" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => handlePrintPhoto(photo)}
+                      >
+                        <Printer className="h-4 w-4" />
                       </Button>
                     </div>
                     <div className="p-2 truncate text-sm">
@@ -308,6 +326,36 @@ const PhotoUploader = () => {
           )}
         </>
       )}
+
+      <Dialog open={isPrintDialogOpen} onOpenChange={setIsPrintDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-xl font-bold mb-4">Print Photo</h3>
+              {selectedPhoto && (
+                <div>
+                  <div className="rounded-md overflow-hidden border mb-4">
+                    <img 
+                      src={selectedPhoto.url} 
+                      alt={selectedPhoto.file_name}
+                      className="w-full h-auto"
+                    />
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {selectedPhoto.file_name}
+                  </p>
+                </div>
+              )}
+            </div>
+            <div>
+              <PrintOptions 
+                selectedFile={selectedPhoto || undefined}
+                fileType="photo"
+              />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

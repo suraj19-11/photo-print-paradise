@@ -1,10 +1,12 @@
 
 import { useState, useCallback, useEffect } from 'react';
-import { Upload, X, Check, FileText, Loader2 } from 'lucide-react';
+import { Upload, X, Check, FileText, Loader2, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { uploadDocument, getUserDocuments, deleteDocument } from '@/services/documentService';
 import { useAuth } from '@/contexts/AuthContext';
+import PrintOptions from '@/components/products/PrintOptions';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 
 interface FileWithPreview extends File {
   preview?: string;
@@ -25,6 +27,8 @@ const DocumentUploader = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedDoc, setSelectedDoc] = useState<UploadedDocument | null>(null);
+  const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
   const { user } = useAuth();
 
   // Load user's existing documents on component mount
@@ -33,6 +37,7 @@ const DocumentUploader = () => {
       if (user?.id) {
         try {
           const docs = await getUserDocuments(user.id);
+          console.log("Loaded documents:", docs);
           setUploadedDocs(docs);
         } catch (error) {
           console.error('Error loading documents:', error);
@@ -176,6 +181,11 @@ const DocumentUploader = () => {
     }
   };
 
+  const handlePrintDocument = (doc: UploadedDocument) => {
+    setSelectedDoc(doc);
+    setIsPrintDialogOpen(true);
+  };
+
   const getFileIcon = (fileType: string) => {
     return <FileText className="h-12 w-12 text-gray-400" />;
   };
@@ -278,7 +288,7 @@ const DocumentUploader = () => {
                     <div className="w-full aspect-square flex items-center justify-center bg-gray-200">
                       {getFileIcon(doc.file_type)}
                     </div>
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <Button 
                         variant="destructive" 
                         size="icon" 
@@ -286,6 +296,14 @@ const DocumentUploader = () => {
                         onClick={() => handleRemoveUploadedDoc(doc.id)}
                       >
                         <X className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="secondary" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => handlePrintDocument(doc)}
+                      >
+                        <Printer className="h-4 w-4" />
                       </Button>
                     </div>
                     <div className="p-2 truncate text-sm">
@@ -300,6 +318,32 @@ const DocumentUploader = () => {
           )}
         </>
       )}
+
+      <Dialog open={isPrintDialogOpen} onOpenChange={setIsPrintDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-xl font-bold mb-4">Print Document</h3>
+              {selectedDoc && (
+                <div>
+                  <div className="rounded-md overflow-hidden border mb-4 p-4 bg-gray-50 flex items-center justify-center">
+                    <FileText className="h-24 w-24 text-gray-400" />
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {selectedDoc.file_name}
+                  </p>
+                </div>
+              )}
+            </div>
+            <div>
+              <PrintOptions 
+                selectedFile={selectedDoc || undefined}
+                fileType="document"
+              />
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

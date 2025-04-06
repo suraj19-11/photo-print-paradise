@@ -35,7 +35,18 @@ const paperTypes = [
   { id: 'paper-5', name: 'Deep Matte', price: 0.35 },
 ];
 
-const PrintOptions = () => {
+interface PrintOptionsProps {
+  selectedFile?: {
+    id?: string;
+    url?: string;
+    file_name?: string;
+    file_path?: string;
+    file_type?: string;
+  };
+  fileType?: 'photo' | 'document';
+}
+
+const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) => {
   const [selectedSize, setSelectedSize] = useState(sizes[0].id);
   const [selectedPaper, setSelectedPaper] = useState(paperTypes[0].id);
   const [quantity, setQuantity] = useState(1);
@@ -183,15 +194,18 @@ const PrintOptions = () => {
       }
       
       const item = {
-        name: 'Photo Print',
+        name: fileType === 'photo' ? 'Photo Print' : 'Document Print',
         size: size.name,
         paper: paper.name,
         quantity: quantity,
         price: parseFloat(`${(size.price + paper.price).toFixed(2)}`),
-        imageUrl: '/placeholder.svg',
-        type: 'photo' as const
+        imageUrl: fileType === 'photo' ? selectedFile?.url : undefined,
+        fileUrl: fileType === 'document' ? selectedFile?.url : undefined,
+        fileName: selectedFile?.file_name,
+        type: fileType
       };
       
+      console.log("Adding to cart:", item);
       addToCart(item);
       
       toast({

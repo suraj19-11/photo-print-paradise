@@ -74,21 +74,16 @@ const Upload = () => {
               
               <TabsContent value="photos" className="rounded-xl bg-white p-6 shadow-sm border">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  <div className="lg:col-span-2">
+                  <div className="lg:col-span-3">
                     <PhotoUploader />
-                  </div>
-                  <div>
-                    <PrintOptions />
                   </div>
                 </div>
               </TabsContent>
+              
               <TabsContent value="documents" className="rounded-xl bg-white p-6 shadow-sm border">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  <div className="lg:col-span-2">
+                  <div className="lg:col-span-3">
                     <DocumentUploader />
-                  </div>
-                  <div>
-                    <PrintOptions />
                   </div>
                 </div>
               </TabsContent>
