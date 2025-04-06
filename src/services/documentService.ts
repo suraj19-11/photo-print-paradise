@@ -3,37 +3,37 @@ import { supabase, isDevelopmentMode } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
- * Upload a photo to storage
+ * Upload a document to storage
  */
-export const uploadPhoto = async (file: File, userId: string) => {
+export const uploadDocument = async (file: File, userId: string) => {
   try {
     if (isDevelopmentMode) {
       // Mock implementation for development mode
-      console.log('Development mode: Mock photo upload', file.name);
-      const mockPhotoId = uuidv4();
-      const mockPhoto = {
-        id: mockPhotoId,
+      console.log('Development mode: Mock document upload', file.name);
+      const mockDocId = uuidv4();
+      const mockDoc = {
+        id: mockDocId,
         user_id: userId,
-        file_path: `mock/photos/${mockPhotoId}`,
+        file_path: `mock/documents/${mockDocId}`,
         file_name: file.name,
         created_at: new Date().toISOString(),
         file_size: file.size,
         status: 'ready',
-        url: URL.createObjectURL(file)
+        file_type: file.type
       };
       
       // Store in localStorage to persist across page reloads
-      const mockPhotos = JSON.parse(localStorage.getItem('mockPhotos') || '[]');
-      mockPhotos.push(mockPhoto);
-      localStorage.setItem('mockPhotos', JSON.stringify(mockPhotos));
+      const mockDocs = JSON.parse(localStorage.getItem('mockDocuments') || '[]');
+      mockDocs.push(mockDoc);
+      localStorage.setItem('mockDocuments', JSON.stringify(mockDocs));
       
-      return mockPhoto;
+      return mockDoc;
     }
 
     // For production with real Supabase
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/${uuidv4()}.${fileExt}`;
-    const filePath = `photos/${fileName}`;
+    const filePath = `documents/${fileName}`;
 
     // Upload file to Supabase Storage
     const { data: storageData, error: storageError } = await supabase.storage
@@ -49,22 +49,22 @@ export const uploadPhoto = async (file: File, userId: string) => {
 
     const { data: signedUrlData } = await supabase.storage
       .from('user-uploads')
-      .createSignedUrl(filePath, 60 * 60 * 24 * 365); // 1 year expiry
+      .createSignedUrl(filePath, 60 * 60 * 24); // 24 hours
 
     // Create database record
-    const photoData = {
+    const docData = {
       id: uuidv4(),
       user_id: userId,
       file_path: filePath,
       file_name: file.name,
       file_size: file.size,
-      dimensions: '', // Would need image processing to get this
+      file_type: file.type,
       status: 'ready'
     };
 
-    const { data: photoRecord, error: dbError } = await supabase
-      .from('photos')
-      .insert(photoData)
+    const { data: docRecord, error: dbError } = await supabase
+      .from('documents')
+      .insert(docData)
       .select()
       .single();
 
@@ -72,28 +72,28 @@ export const uploadPhoto = async (file: File, userId: string) => {
       throw dbError;
     }
 
-    return { ...photoRecord, url: signedUrlData?.signedUrl };
+    return { ...docRecord, url: signedUrlData?.signedUrl };
   } catch (error) {
-    console.error('Error in uploadPhoto:', error);
+    console.error('Error in uploadDocument:', error);
     throw error;
   }
 };
 
 /**
- * Get user's photos
+ * Get user's documents
  */
-export const getUserPhotos = async (userId: string) => {
+export const getUserDocuments = async (userId: string) => {
   try {
     if (isDevelopmentMode) {
       // Mock implementation for development mode
-      console.log('Development mode: Getting mock photos for user', userId);
-      const mockPhotos = JSON.parse(localStorage.getItem('mockPhotos') || '[]');
-      return mockPhotos.filter(photo => photo.user_id === userId);
+      console.log('Development mode: Getting mock documents for user', userId);
+      const mockDocs = JSON.parse(localStorage.getItem('mockDocuments') || '[]');
+      return mockDocs.filter(doc => doc.user_id === userId);
     }
 
     // For production with real Supabase
     const { data, error } = await supabase
-      .from('photos')
+      .from('documents')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -102,50 +102,50 @@ export const getUserPhotos = async (userId: string) => {
       throw error;
     }
 
-    // Add signed URLs for each photo
-    const photosWithUrls = await Promise.all(
-      data.map(async (photo) => {
+    // Add signed URLs for each document
+    const docsWithUrls = await Promise.all(
+      data.map(async (doc) => {
         const { data: signedUrlData } = await supabase.storage
           .from('user-uploads')
-          .createSignedUrl(photo.file_path, 60 * 60 * 24); // 24 hours
+          .createSignedUrl(doc.file_path, 60 * 60 * 24); // 24 hours
         
         return {
-          ...photo,
+          ...doc,
           url: signedUrlData?.signedUrl || ''
         };
       })
     );
 
-    return photosWithUrls;
+    return docsWithUrls;
   } catch (error) {
-    console.error('Error in getUserPhotos:', error);
+    console.error('Error in getUserDocuments:', error);
     throw error;
   }
 };
 
 /**
- * Delete a photo
+ * Delete a document
  */
-export const deletePhoto = async (photoId: string, userId: string) => {
+export const deleteDocument = async (docId: string, userId: string) => {
   try {
     if (isDevelopmentMode) {
       // Mock implementation for development mode
-      console.log('Development mode: Deleting mock photo', photoId);
-      const mockPhotos = JSON.parse(localStorage.getItem('mockPhotos') || '[]');
-      const updatedPhotos = mockPhotos.filter(
-        photo => !(photo.id === photoId && photo.user_id === userId)
+      console.log('Development mode: Deleting mock document', docId);
+      const mockDocs = JSON.parse(localStorage.getItem('mockDocuments') || '[]');
+      const updatedDocs = mockDocs.filter(
+        doc => !(doc.id === docId && doc.user_id === userId)
       );
-      localStorage.setItem('mockPhotos', JSON.stringify(updatedPhotos));
+      localStorage.setItem('mockDocuments', JSON.stringify(updatedDocs));
       return { success: true };
     }
 
     // For production with real Supabase
-    // First get the photo to know the file path
-    const { data: photo, error: fetchError } = await supabase
-      .from('photos')
+    // First get the document to know the file path
+    const { data: doc, error: fetchError } = await supabase
+      .from('documents')
       .select('file_path')
-      .eq('id', photoId)
-      .eq('user_id', userId) // Security: ensure user owns the photo
+      .eq('id', docId)
+      .eq('user_id', userId) // Security: ensure user owns the document
       .single();
 
     if (fetchError) {
@@ -155,7 +155,7 @@ export const deletePhoto = async (photoId: string, userId: string) => {
     // Delete the file from storage
     const { error: storageError } = await supabase.storage
       .from('user-uploads')
-      .remove([photo.file_path]);
+      .remove([doc.file_path]);
 
     if (storageError) {
       throw storageError;
@@ -163,10 +163,10 @@ export const deletePhoto = async (photoId: string, userId: string) => {
 
     // Delete the database record
     const { error: dbError } = await supabase
-      .from('photos')
+      .from('documents')
       .delete()
-      .eq('id', photoId)
-      .eq('user_id', userId); // Security: ensure user owns the photo
+      .eq('id', docId)
+      .eq('user_id', userId); // Security: ensure user owns the document
 
     if (dbError) {
       throw dbError;
@@ -174,7 +174,7 @@ export const deletePhoto = async (photoId: string, userId: string) => {
 
     return { success: true };
   } catch (error) {
-    console.error('Error in deletePhoto:', error);
+    console.error('Error in deleteDocument:', error);
     throw error;
   }
 };

@@ -1,19 +1,29 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Printer, ArrowLeft, Download, Clock, Truck, CheckCircle } from 'lucide-react';
+
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { Printer, ArrowLeft, Download, Clock, Truck, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import OrderSummary from '@/components/orders/OrderSummary';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { supabase, isDevelopmentMode } from '@/lib/supabase';
 
 const OrderDetails = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Sample order data - in a real app, this would come from an API
-  const order = {
+  const [order, setOrder] = useState({
     id: id || 'ORD-1234',
     date: 'May 15, 2023',
     status: 'processing',
@@ -41,20 +51,137 @@ const OrderDetails = () => {
     shipping: 4.99,
     total: 11.20,
     estimatedDelivery: 'May 22 - May 24, 2023',
-  };
+  });
+
+  // Special handling for mock cart
+  useEffect(() => {
+    if (id === 'cart123') {
+      const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]');
+      if (cartItems.length > 0) {
+        // Calculate totals
+        const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const tax = subtotal * 0.08; // 8% tax
+        const shipping = 4.99;
+        const total = subtotal + tax + shipping;
+        
+        setOrder({
+          id: 'CART-123',
+          date: new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          }),
+          status: 'pending',
+          items: cartItems,
+          subtotal,
+          tax,
+          shipping,
+          total,
+          estimatedDelivery: '3-5 business days from payment',
+        });
+      }
+      setIsLoading(false);
+      return;
+    }
+
+    // Load real order data
+    const loadOrder = async () => {
+      if (!id || !user) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        if (isDevelopmentMode) {
+          // Mock data for development
+          setTimeout(() => {
+            setIsLoading(false);
+          }, 500);
+        } else {
+          // Real implementation with Supabase
+          const { data, error } = await supabase
+            .from('orders')
+            .select(`
+              *,
+              order_items(*)
+            `)
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .single();
+            
+          if (error) {
+            throw error;
+          }
+          
+          if (data) {
+            setOrder(data);
+          }
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error('Error loading order:', err);
+        setError('Failed to load order details. Please try again later.');
+        setIsLoading(false);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not load order details."
+        });
+      }
+    };
+    
+    loadOrder();
+  }, [id, user, toast]);
 
   // Order progress steps
   const orderProgress = [
-    { id: 1, name: 'Confirmed', icon: CheckCircle, completed: true, date: 'May 15, 2023' },
-    { id: 2, name: 'Processing', icon: Printer, completed: true, date: 'May 16, 2023' },
-    { id: 3, name: 'Ready', icon: Clock, completed: false },
-    { id: 4, name: 'Shipped', icon: Truck, completed: false },
-    { id: 5, name: 'Delivered', icon: CheckCircle, completed: false },
+    { id: 1, name: 'Confirmed', icon: CheckCircle, completed: true, date: order.date },
+    { id: 2, name: 'Processing', icon: Printer, completed: order.status !== 'pending', date: order.status !== 'pending' ? 'May 16, 2023' : undefined },
+    { id: 3, name: 'Ready', icon: Clock, completed: ['ready', 'shipped', 'delivered'].includes(order.status) },
+    { id: 4, name: 'Shipped', icon: Truck, completed: ['shipped', 'delivered'].includes(order.status) },
+    { id: 5, name: 'Delivered', icon: CheckCircle, completed: order.status === 'delivered' },
   ];
 
   // Calculate progress percentage
   const completedSteps = orderProgress.filter(step => step.completed).length;
   const progressPercentage = (completedSteps / orderProgress.length) * 100;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 py-12 bg-gray-50 flex items-center justify-center">
+          <div className="animate-pulse text-xl">Loading order details...</div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-1 py-12 bg-gray-50">
+          <div className="container mx-auto px-4 md:px-6">
+            <Alert variant="destructive" className="max-w-lg mx-auto">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => navigate('/')}
+              >
+                Return to Home
+              </Button>
+            </Alert>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -66,7 +193,7 @@ const OrderDetails = () => {
             <div className="flex items-center mb-8">
               <Link to="/" className="flex items-center text-primary hover:underline mr-4">
                 <ArrowLeft className="h-4 w-4 mr-1" />
-                Back to Orders
+                Back to Home
               </Link>
               <h1 className="text-2xl font-bold">Order #{order.id}</h1>
             </div>
@@ -80,10 +207,12 @@ const OrderDetails = () => {
                         <h2 className="text-xl font-semibold mb-1">Order Status</h2>
                         <p className="text-gray-500">Placed on {order.date}</p>
                       </div>
-                      <Button variant="outline">
-                        <Download className="h-4 w-4 mr-2" />
-                        Invoice
-                      </Button>
+                      {id !== 'cart123' && (
+                        <Button variant="outline">
+                          <Download className="h-4 w-4 mr-2" />
+                          Invoice
+                        </Button>
+                      )}
                     </div>
                     
                     <div className="mb-8">
@@ -94,80 +223,93 @@ const OrderDetails = () => {
                       <Progress value={progressPercentage} className="h-2" />
                     </div>
                     
-                    <div className="space-y-6">
-                      {orderProgress.map((step, index) => (
-                        <div key={step.id} className="flex items-start">
-                          <div className={`rounded-full h-10 w-10 flex items-center justify-center mr-4 flex-shrink-0 ${
-                            step.completed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
-                          }`}>
-                            <step.icon className="h-5 w-5" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex justify-between">
-                              <h3 className="font-medium">{step.name}</h3>
-                              {step.date && <span className="text-sm text-gray-500">{step.date}</span>}
+                    {id === 'cart123' ? (
+                      <div className="text-center p-6 bg-yellow-50 rounded-lg mb-6">
+                        <AlertTriangle className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
+                        <h3 className="text-lg font-medium text-yellow-700">This is your shopping cart</h3>
+                        <p className="mt-2 text-yellow-600">Complete your payment to place your order</p>
+                        <Button className="mt-4" onClick={() => navigate('/upload')}>
+                          Continue to Checkout
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {orderProgress.map((step, index) => (
+                          <div key={step.id} className="flex items-start">
+                            <div className={`rounded-full h-10 w-10 flex items-center justify-center mr-4 flex-shrink-0 ${
+                              step.completed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
+                            }`}>
+                              <step.icon className="h-5 w-5" />
                             </div>
-                            <p className="text-sm text-gray-500 mt-1">
-                              {index === 0 && 'Your order has been confirmed.'}
-                              {index === 1 && 'Your order is being processed and printed.'}
-                              {index === 2 && 'Your order will be ready for shipping soon.'}
-                              {index === 3 && `Expected delivery: ${order.estimatedDelivery}`}
-                              {index === 4 && 'Your order has been delivered.'}
-                            </p>
+                            <div className="flex-1">
+                              <div className="flex justify-between">
+                                <h3 className="font-medium">{step.name}</h3>
+                                {step.date && <span className="text-sm text-gray-500">{step.date}</span>}
+                              </div>
+                              <p className="text-sm text-gray-500 mt-1">
+                                {index === 0 && 'Your order has been confirmed.'}
+                                {index === 1 && 'Your order is being processed and printed.'}
+                                {index === 2 && 'Your order will be ready for shipping soon.'}
+                                {index === 3 && `Expected delivery: ${order.estimatedDelivery}`}
+                                {index === 4 && 'Your order has been delivered.'}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
                 
-                <Card className="mt-8">
-                  <CardContent className="p-6">
-                    <h2 className="text-xl font-semibold mb-6">Shipping Information</h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-2">Shipping Address</h3>
-                        <div className="space-y-1">
-                          <p className="font-medium">John Doe</p>
-                          <p>123 Main Street</p>
-                          <p>Apt 4B</p>
-                          <p>New York, NY 10001</p>
-                          <p>United States</p>
+                {id !== 'cart123' && (
+                  <Card className="mt-8">
+                    <CardContent className="p-6">
+                      <h2 className="text-xl font-semibold mb-6">Shipping Information</h2>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-500 mb-2">Shipping Address</h3>
+                          <div className="space-y-1">
+                            <p className="font-medium">John Doe</p>
+                            <p>123 Main Street</p>
+                            <p>Apt 4B</p>
+                            <p>New York, NY 10001</p>
+                            <p>United States</p>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-500 mb-2">Shipping Method</h3>
+                          <p className="font-medium">Standard Shipping</p>
+                          <p className="text-gray-600 mt-1">Estimated delivery: {order.estimatedDelivery}</p>
                         </div>
                       </div>
                       
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-2">Shipping Method</h3>
-                        <p className="font-medium">Standard Shipping</p>
-                        <p className="text-gray-600 mt-1">Estimated delivery: {order.estimatedDelivery}</p>
-                      </div>
-                    </div>
-                    
-                    <Separator className="my-6" />
-                    
-                    <h2 className="text-xl font-semibold mb-6">Payment Information</h2>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Method</h3>
-                        <p className="font-medium">Credit Card</p>
-                        <p className="text-gray-600 mt-1">Visa ending in 4242</p>
-                      </div>
+                      <Separator className="my-6" />
                       
-                      <div>
-                        <h3 className="text-sm font-medium text-gray-500 mb-2">Billing Address</h3>
-                        <div className="space-y-1">
-                          <p className="font-medium">John Doe</p>
-                          <p>123 Main Street</p>
-                          <p>Apt 4B</p>
-                          <p>New York, NY 10001</p>
-                          <p>United States</p>
+                      <h2 className="text-xl font-semibold mb-6">Payment Information</h2>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Method</h3>
+                          <p className="font-medium">Credit Card</p>
+                          <p className="text-gray-600 mt-1">Visa ending in 4242</p>
+                        </div>
+                        
+                        <div>
+                          <h3 className="text-sm font-medium text-gray-500 mb-2">Billing Address</h3>
+                          <div className="space-y-1">
+                            <p className="font-medium">John Doe</p>
+                            <p>123 Main Street</p>
+                            <p>Apt 4B</p>
+                            <p>New York, NY 10001</p>
+                            <p>United States</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
               
               <div>
@@ -178,6 +320,12 @@ const OrderDetails = () => {
                   shipping={order.shipping}
                   total={order.total}
                 />
+                
+                {id === 'cart123' && (
+                  <Button className="w-full mt-4" onClick={() => navigate('/upload')}>
+                    Proceed to Checkout
+                  </Button>
+                )}
               </div>
             </div>
           </div>

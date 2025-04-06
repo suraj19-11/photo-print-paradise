@@ -8,13 +8,14 @@ import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShoppingBag } from 'lucide-react';
 import { 
   initializeRazorpay, 
   createRazorpayOrder, 
   initiateRazorpayPayment,
   RazorpayResponse
 } from '@/services/paymentService';
+import { addToCart } from '@/services/cartService';
 
 // Print size options
 const sizes = [
@@ -150,20 +151,41 @@ const PrintOptions = () => {
   };
 
   const handleAddToCart = () => {
-    const size = sizes.find(size => size.id === selectedSize)?.name;
-    const paper = paperTypes.find(paper => paper.id === selectedPaper)?.name;
-    
-    // In a real app, you would dispatch to a cart state/context/store
-    // For now, we'll just show a toast notification
-    toast({
-      title: "Added to cart",
-      description: `${quantity} ${size} ${paper} print(s) added to your cart`,
-    });
-    
-    // Simulate adding to cart by navigating to an order page
-    setTimeout(() => {
+    try {
+      const size = sizes.find(size => size.id === selectedSize);
+      const paper = paperTypes.find(paper => paper.id === selectedPaper);
+      
+      if (!size || !paper) {
+        throw new Error("Invalid selection");
+      }
+      
+      const item = {
+        name: 'Photo Print',
+        size: size.name,
+        paper: paper.name,
+        quantity: quantity,
+        price: parseFloat(`${(size.price + paper.price).toFixed(2)}`),
+        imageUrl: '/placeholder.svg',
+        type: 'photo' as const
+      };
+      
+      addToCart(item);
+      
+      toast({
+        title: "Added to cart",
+        description: `${quantity} ${size.name} ${paper.name} print(s) added to your cart`,
+      });
+      
+      // Navigate to the cart page after adding to cart
       navigate('/order/cart123');
-    }, 1500);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      toast({
+        title: "Error",
+        description: "Could not add item to cart. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -269,6 +291,7 @@ const PrintOptions = () => {
           </Button>
           
           <Button variant="outline" className="w-full" onClick={handleAddToCart}>
+            <ShoppingBag className="mr-2 h-4 w-4" />
             Add to Cart
           </Button>
         </div>
