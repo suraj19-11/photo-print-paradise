@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import PhotoUploader from '@/components/uploader/PhotoUploader';
+import DocumentUploader from '@/components/uploader/DocumentUploader';
 import PrintOptions from '@/components/products/PrintOptions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -48,7 +49,7 @@ const Upload = () => {
               <TabsContent value="documents" className="rounded-xl bg-white p-6 shadow-sm border">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <div className="lg:col-span-2">
-                    <PhotoUploader />
+                    <DocumentUploader />
                   </div>
                   <div>
                     <PrintOptions />

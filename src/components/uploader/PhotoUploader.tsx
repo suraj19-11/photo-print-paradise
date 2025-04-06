@@ -1,17 +1,53 @@
 
-import { useState, useCallback } from 'react';
-import { Upload, X, Check, Image as ImageIcon } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { Upload, X, Check, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { uploadPhoto, getUserPhotos, deletePhoto } from '@/services/photoService';
+import { useAuth } from '@/contexts/AuthContext';
+import { Photo } from '@/lib/supabase';
 
 interface FileWithPreview extends File {
   preview?: string;
   id?: string;
 }
 
+interface UploadedPhoto extends Photo {
+  url?: string;
+}
+
 const PhotoUploader = () => {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
+  const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+
+  // Load user's existing photos on component mount
+  useEffect(() => {
+    const loadUserPhotos = async () => {
+      if (user?.id) {
+        try {
+          const photos = await getUserPhotos(user.id);
+          setUploadedPhotos(photos);
+        } catch (error) {
+          console.error('Error loading photos:', error);
+          toast({
+            title: "Failed to load photos",
+            description: "Could not load your existing photos.",
+            variant: "destructive"
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setIsLoading(false);
+      }
+    };
+
+    loadUserPhotos();
+  }, [user]);
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -83,11 +119,70 @@ const PhotoUploader = () => {
     });
   };
 
+  const handleRemoveUploadedPhoto = async (id: string) => {
+    if (!user?.id) return;
+    
+    try {
+      await deletePhoto(id, user.id);
+      setUploadedPhotos(prev => prev.filter(photo => photo.id !== id));
+      toast({
+        title: "Photo deleted",
+        description: "Your photo has been deleted successfully.",
+      });
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      toast({
+        title: "Delete failed",
+        description: "Could not delete the photo. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleUploadFiles = async () => {
+    if (!user?.id || files.length === 0) return;
+
+    setIsUploading(true);
+    
+    try {
+      for (const file of files) {
+        try {
+          const uploadResult = await uploadPhoto(file, user.id);
+          setUploadedPhotos(prev => [uploadResult, ...prev]);
+        } catch (error) {
+          console.error('Error uploading file:', error);
+          toast({
+            title: "Upload failed",
+            description: `Failed to upload ${file.name}.`,
+            variant: "destructive"
+          });
+        }
+      }
+      
+      // Clear the files state once all are uploaded
+      setFiles([]);
+      
+      toast({
+        title: "Upload complete",
+        description: "Your files have been uploaded successfully.",
+      });
+    } catch (error) {
+      console.error('Batch upload error:', error);
+      toast({
+        title: "Upload failed",
+        description: "An error occurred while uploading your files.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-3xl mx-auto">
       <div 
-        className={`uploader-container p-8 rounded-lg bg-white flex flex-col items-center justify-center text-center ${
-          isDragging ? 'border-primary' : 'border-gray-300'
+        className={`uploader-container p-8 border-2 border-dashed rounded-lg bg-white flex flex-col items-center justify-center text-center ${
+          isDragging ? 'border-primary bg-primary/5' : 'border-gray-300'
         }`}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
@@ -114,50 +209,104 @@ const PhotoUploader = () => {
         </div>
       </div>
 
-      {files.length > 0 && (
-        <div className="mt-8">
-          <h3 className="text-lg font-medium mb-4">Uploaded Files ({files.length})</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {files.map((file) => (
-              <div key={file.id} className="relative group photo-card rounded-lg overflow-hidden bg-gray-100">
-                {file.preview && file.type?.startsWith('image/') ? (
-                  <img 
-                    src={file.preview} 
-                    alt={file.name}
-                    className="w-full aspect-square object-cover"
-                  />
-                ) : (
-                  <div className="w-full aspect-square flex items-center justify-center bg-gray-200">
-                    <ImageIcon className="h-12 w-12 text-gray-400" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Button 
-                    variant="destructive" 
-                    size="icon" 
-                    className="h-8 w-8"
-                    onClick={() => removeFile(file.id!)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="p-2 truncate text-sm">
-                  {file.name.length > 20 
-                    ? `${file.name.substring(0, 18)}...` 
-                    : file.name}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <div className="mt-6 flex justify-end">
-            <Button variant="secondary" className="mr-2">Cancel</Button>
-            <Button>
-              <Check className="mr-2 h-4 w-4" />
-              Continue to Customize
-            </Button>
-          </div>
+      {isLoading ? (
+        <div className="mt-8 flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+          <span>Loading your photos...</span>
         </div>
+      ) : (
+        <>
+          {/* Added/Selected Files Section */}
+          {files.length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-lg font-medium mb-4">Files to Upload ({files.length})</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {files.map((file) => (
+                  <div key={file.id} className="relative group photo-card rounded-lg overflow-hidden bg-gray-100">
+                    {file.preview && file.type?.startsWith('image/') ? (
+                      <img 
+                        src={file.preview} 
+                        alt={file.name}
+                        className="w-full aspect-square object-cover"
+                      />
+                    ) : (
+                      <div className="w-full aspect-square flex items-center justify-center bg-gray-200">
+                        <ImageIcon className="h-12 w-12 text-gray-400" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Button 
+                        variant="destructive" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => removeFile(file.id!)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="p-2 truncate text-sm">
+                      {file.name.length > 20 
+                        ? `${file.name.substring(0, 18)}...` 
+                        : file.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-6 flex justify-end">
+                <Button variant="secondary" className="mr-2" onClick={() => setFiles([])}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUploadFiles} disabled={isUploading}>
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="mr-2 h-4 w-4" />
+                      Upload Files
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Already Uploaded Photos Section */}
+          {uploadedPhotos.length > 0 && (
+            <div className="mt-8">
+              <h3 className="text-lg font-medium mb-4">Your Uploaded Photos ({uploadedPhotos.length})</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                {uploadedPhotos.map((photo) => (
+                  <div key={photo.id} className="relative group photo-card rounded-lg overflow-hidden bg-gray-100">
+                    <img 
+                      src={photo.url} 
+                      alt={photo.file_name}
+                      className="w-full aspect-square object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Button 
+                        variant="destructive" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => handleRemoveUploadedPhoto(photo.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="p-2 truncate text-sm">
+                      {photo.file_name.length > 20 
+                        ? `${photo.file_name.substring(0, 18)}...` 
+                        : photo.file_name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -1,13 +1,20 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
+import { 
+  initializeRazorpay, 
+  createRazorpayOrder, 
+  initiateRazorpayPayment,
+  RazorpayResponse
+} from '@/services/paymentService';
 
 // Print size options
 const sizes = [
@@ -31,13 +38,115 @@ const PrintOptions = () => {
   const [selectedSize, setSelectedSize] = useState(sizes[0].id);
   const [selectedPaper, setSelectedPaper] = useState(paperTypes[0].id);
   const [quantity, setQuantity] = useState(1);
+  const [isRazorpayReady, setIsRazorpayReady] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
+
+  useEffect(() => {
+    // Initialize Razorpay when the component mounts
+    const initRazorpay = async () => {
+      const ready = await initializeRazorpay();
+      setIsRazorpayReady(ready);
+      
+      if (!ready) {
+        toast({
+          title: "Payment service unavailable",
+          description: "Unable to load payment service. Please try again later.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    initRazorpay();
+  }, []);
 
   const calculatePrice = () => {
     const sizePrice = sizes.find(size => size.id === selectedSize)?.price || 0;
     const paperPrice = paperTypes.find(paper => paper.id === selectedPaper)?.price || 0;
     return ((sizePrice + paperPrice) * quantity).toFixed(2);
+  };
+
+  const handlePayment = async () => {
+    if (!isRazorpayReady) {
+      toast({
+        title: "Payment service unavailable",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please login to proceed with payment.",
+        variant: "destructive"
+      });
+      navigate('/login');
+      return;
+    }
+
+    setIsProcessingPayment(true);
+
+    try {
+      // Get print details
+      const size = sizes.find(size => size.id === selectedSize)?.name;
+      const paper = paperTypes.find(paper => paper.id === selectedPaper)?.name;
+      const totalAmount = parseFloat(calculatePrice());
+      
+      // Create a Razorpay order
+      const orderResponse = await createRazorpayOrder(
+        totalAmount, 
+        `PRINT-${Date.now()}`
+      );
+      
+      // Initialize the payment
+      initiateRazorpayPayment({
+        amount: orderResponse.amount,
+        name: "PrintPoint",
+        description: `${quantity} ${size} ${paper} print(s)`,
+        order_id: orderResponse.id,
+        prefill: {
+          name: profile ? `${profile.first_name} ${profile.last_name}` : undefined,
+          email: user.email || undefined,
+        },
+        handler: (response: RazorpayResponse) => {
+          handlePaymentSuccess(response, orderResponse.id);
+        },
+        theme: {
+          color: "#7c3aed" // Primary color for Tailwind's purple-600
+        }
+      });
+    } catch (error) {
+      console.error('Payment initialization error:', error);
+      toast({
+        title: "Payment failed",
+        description: "Could not initialize payment. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
+  const handlePaymentSuccess = (response: RazorpayResponse, orderId: string) => {
+    const size = sizes.find(size => size.id === selectedSize)?.name;
+    const paper = paperTypes.find(paper => paper.id === selectedPaper)?.name;
+    
+    // Here you would typically call your backend to verify the payment
+    // and create the order in your database
+    
+    toast({
+      title: "Payment successful",
+      description: `Your payment for ${quantity} ${size} ${paper} print(s) has been processed successfully.`,
+    });
+    
+    // Simulate order creation and redirect to order details
+    setTimeout(() => {
+      navigate(`/order/${orderId}`);
+    }, 1500);
   };
 
   const handleAddToCart = () => {
@@ -143,7 +252,26 @@ const PrintOptions = () => {
           </div>
         </div>
 
-        <Button className="w-full" onClick={handleAddToCart}>Add to Cart</Button>
+        <div className="space-y-3">
+          <Button 
+            className="w-full" 
+            onClick={handlePayment}
+            disabled={isProcessingPayment || !isRazorpayReady}
+          >
+            {isProcessingPayment ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              'Pay Now'
+            )}
+          </Button>
+          
+          <Button variant="outline" className="w-full" onClick={handleAddToCart}>
+            Add to Cart
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
