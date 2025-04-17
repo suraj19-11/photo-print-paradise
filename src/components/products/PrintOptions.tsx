@@ -35,6 +35,21 @@ const paperTypes = [
   { id: 'paper-5', name: 'Deep Matte', price: 0.35 },
 ];
 
+// Finish options
+const finishOptions = [
+  { id: 'finish-1', name: 'Standard', price: 0 },
+  { id: 'finish-2', name: 'Borderless', price: 0.15 },
+  { id: 'finish-3', name: 'White Border', price: 0.10 },
+];
+
+// Document print options (for document uploads)
+const documentOptions = [
+  { id: 'doc-1', name: 'Single-sided', price: 0.10 },
+  { id: 'doc-2', name: 'Double-sided', price: 0.18 },
+  { id: 'doc-3', name: 'Color print', price: 0.35 },
+  { id: 'doc-4', name: 'Black & White', price: 0.08 },
+];
+
 interface PrintOptionsProps {
   selectedFile?: {
     id?: string;
@@ -49,6 +64,8 @@ interface PrintOptionsProps {
 const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) => {
   const [selectedSize, setSelectedSize] = useState(sizes[0].id);
   const [selectedPaper, setSelectedPaper] = useState(paperTypes[0].id);
+  const [selectedFinish, setSelectedFinish] = useState(finishOptions[0].id);
+  const [selectedDocOption, setSelectedDocOption] = useState(documentOptions[0].id);
   const [quantity, setQuantity] = useState(1);
   const [isRazorpayReady, setIsRazorpayReady] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -91,7 +108,10 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
   const calculatePrice = () => {
     const sizePrice = sizes.find(size => size.id === selectedSize)?.price || 0;
     const paperPrice = paperTypes.find(paper => paper.id === selectedPaper)?.price || 0;
-    return ((sizePrice + paperPrice) * quantity).toFixed(2);
+    const finishPrice = finishOptions.find(finish => finish.id === selectedFinish)?.price || 0;
+    const docOptionPrice = fileType === 'document' ? (documentOptions.find(option => option.id === selectedDocOption)?.price || 0) : 0;
+    
+    return ((sizePrice + paperPrice + finishPrice + docOptionPrice) * quantity).toFixed(2);
   };
 
   const handlePayment = async () => {
@@ -126,6 +146,10 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
       // Get print details
       const size = sizes.find(size => size.id === selectedSize)?.name;
       const paper = paperTypes.find(paper => paper.id === selectedPaper)?.name;
+      const finish = finishOptions.find(finish => finish.id === selectedFinish)?.name;
+      const docOption = fileType === 'document' ? 
+        documentOptions.find(option => option.id === selectedDocOption)?.name : null;
+      
       const totalAmount = parseFloat(calculatePrice());
       
       console.log("Creating Razorpay order for amount:", totalAmount);
@@ -141,7 +165,7 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
       initiateRazorpayPayment({
         amount: orderResponse.amount,
         name: "PrintPoint",
-        description: `${quantity} ${size} ${paper} print(s)`,
+        description: `${quantity} ${size} ${paper} ${finish} print(s)${docOption ? ` (${docOption})` : ''}`,
         order_id: orderResponse.id,
         prefill: {
           name: profile ? `${profile.first_name} ${profile.last_name}` : undefined,
@@ -169,13 +193,14 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
   const handlePaymentSuccess = (response: RazorpayResponse, orderId: string) => {
     const size = sizes.find(size => size.id === selectedSize)?.name;
     const paper = paperTypes.find(paper => paper.id === selectedPaper)?.name;
+    const finish = finishOptions.find(finish => finish.id === selectedFinish)?.name;
     
     // Here you would typically call your backend to verify the payment
     // and create the order in your database
     
     toast({
       title: "Payment successful",
-      description: `Your payment for ${quantity} ${size} ${paper} print(s) has been processed successfully.`,
+      description: `Your payment for ${quantity} ${size} ${paper} ${finish} print(s) has been processed successfully.`,
     });
     
     // Simulate order creation and redirect to order details
@@ -188,17 +213,25 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
     try {
       const size = sizes.find(size => size.id === selectedSize);
       const paper = paperTypes.find(paper => paper.id === selectedPaper);
+      const finish = finishOptions.find(finish => finish.id === selectedFinish);
+      const docOption = documentOptions.find(option => option.id === selectedDocOption);
       
-      if (!size || !paper) {
+      if (!size || !paper || !finish) {
         throw new Error("Invalid selection");
       }
+      
+      const totalItemPrice = fileType === 'document' 
+        ? size.price + paper.price + finish.price + (docOption?.price || 0)
+        : size.price + paper.price + finish.price;
       
       const item = {
         name: fileType === 'photo' ? 'Photo Print' : 'Document Print',
         size: size.name,
         paper: paper.name,
+        finish: finish.name,
+        docOption: fileType === 'document' ? docOption?.name : undefined,
         quantity: quantity,
-        price: parseFloat(`${(size.price + paper.price).toFixed(2)}`),
+        price: parseFloat(totalItemPrice.toFixed(2)),
         imageUrl: fileType === 'photo' ? selectedFile?.url : undefined,
         fileUrl: fileType === 'document' ? selectedFile?.url : undefined,
         fileName: selectedFile?.file_name,
@@ -271,6 +304,50 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
             ))}
           </RadioGroup>
         </div>
+
+        {/* Finish Options Section */}
+        <div className="mb-6">
+          <h4 className="text-base font-medium mb-3">Finish</h4>
+          <RadioGroup 
+            value={selectedFinish} 
+            onValueChange={setSelectedFinish}
+            className="grid grid-cols-1 md:grid-cols-3 gap-3"
+          >
+            {finishOptions.map(finish => (
+              <div key={finish.id} className="flex items-center space-x-2">
+                <RadioGroupItem value={finish.id} id={finish.id} />
+                <Label htmlFor={finish.id} className="flex justify-between w-full">
+                  <span>{finish.name}</span>
+                  {finish.price > 0 && (
+                    <span className="text-gray-500">+₹{finish.price.toFixed(2)}</span>
+                  )}
+                </Label>
+              </div>
+            ))}
+          </RadioGroup>
+        </div>
+
+        {/* Document Options Section - Only show for document type */}
+        {fileType === 'document' && (
+          <div className="mb-6">
+            <h4 className="text-base font-medium mb-3">Print Options</h4>
+            <RadioGroup 
+              value={selectedDocOption} 
+              onValueChange={setSelectedDocOption}
+              className="grid grid-cols-1 md:grid-cols-2 gap-3"
+            >
+              {documentOptions.map(option => (
+                <div key={option.id} className="flex items-center space-x-2">
+                  <RadioGroupItem value={option.id} id={option.id} />
+                  <Label htmlFor={option.id} className="flex justify-between w-full">
+                    <span>{option.name}</span>
+                    <span className="text-gray-500">₹{option.price.toFixed(2)}/page</span>
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+        )}
 
         {/* Quantity Section */}
         <div className="mb-8">

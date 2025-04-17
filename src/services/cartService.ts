@@ -6,6 +6,8 @@ export interface CartItem {
   name: string;
   size: string;
   paper: string;
+  finish?: string;
+  docOption?: string;
   quantity: number;
   price: number;
   imageUrl?: string;

@@ -208,16 +208,20 @@ const DocumentUploader = () => {
         <p className="text-sm text-gray-400 mb-6">Supported formats: PDF, DOCX, TXT (max 20MB)</p>
         
         <div className="relative">
-          <Button variant="outline" className="relative z-10">
-            Browse Documents
-          </Button>
           <input 
             type="file" 
+            id="document-file-input"
             multiple 
             accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain" 
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            className="hidden"
             onChange={handleFileInput}
           />
+          <Button 
+            variant="outline" 
+            onClick={() => document.getElementById('document-file-input')?.click()}
+          >
+            Browse Documents
+          </Button>
         </div>
       </div>
 

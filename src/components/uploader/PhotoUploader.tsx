@@ -206,16 +206,20 @@ const PhotoUploader = () => {
         <p className="text-sm text-gray-400 mb-6">Supported formats: JPG, PNG, PDF (max 20MB)</p>
         
         <div className="relative">
-          <Button variant="outline" className="relative z-10">
-            Browse Files
-          </Button>
           <input 
             type="file" 
+            id="photo-file-input"
             multiple 
             accept="image/*,application/pdf" 
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            className="hidden"
             onChange={handleFileInput}
           />
+          <Button 
+            variant="outline" 
+            onClick={() => document.getElementById('photo-file-input')?.click()}
+          >
+            Browse Files
+          </Button>
         </div>
       </div>
 
