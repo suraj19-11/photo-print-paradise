@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Printer, ArrowLeft, Download, Clock, Truck, CheckCircle, AlertTriangle } from 'lucide-react';
@@ -6,6 +7,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useForm } from 'react-hook-form';
+import { 
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage
+} from '@/components/ui/form';
+import * as z from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import OrderSummary from '@/components/orders/OrderSummary';
@@ -15,6 +30,20 @@ import { supabase, isDevelopmentMode } from '@/lib/supabase';
 import { createOrder } from '@/services/orderService';
 import { v4 as uuidv4 } from 'uuid';
 
+// Define the form schema
+const shippingFormSchema = z.object({
+  fullName: z.string().min(3, { message: "Full name is required" }),
+  addressLine1: z.string().min(5, { message: "Address line 1 is required" }),
+  addressLine2: z.string().optional(),
+  city: z.string().min(2, { message: "City is required" }),
+  state: z.string().min(2, { message: "State is required" }),
+  zipCode: z.string().min(5, { message: "Valid zip code is required" }),
+  country: z.string().min(2, { message: "Country is required" }),
+  phone: z.string().min(10, { message: "Valid phone number is required" }),
+});
+
+type ShippingFormValues = z.infer<typeof shippingFormSchema>;
+
 const OrderDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -23,6 +52,7 @@ const OrderDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showShippingForm, setShowShippingForm] = useState(id === 'cart123');
   
   const [order, setOrder] = useState({
     id: id || 'ORD-1234',
@@ -52,9 +82,34 @@ const OrderDetails = () => {
     shipping: 4.99,
     total: 11.20,
     estimatedDelivery: 'May 22 - May 24, 2023',
+    shippingAddress: {
+      fullName: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: '',
+      phone: ''
+    }
   });
 
-  const handleCompleteCheckout = async () => {
+  // Form definition
+  const form = useForm<ShippingFormValues>({
+    resolver: zodResolver(shippingFormSchema),
+    defaultValues: {
+      fullName: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      country: 'United States',
+      phone: '',
+    },
+  });
+
+  const handleCompleteCheckout = async (shippingData?: ShippingFormValues) => {
     if (!user) {
       toast({
         title: "Login required",
@@ -62,6 +117,11 @@ const OrderDetails = () => {
         variant: "destructive"
       });
       navigate('/login');
+      return;
+    }
+
+    if (showShippingForm && !shippingData) {
+      form.handleSubmit(handleCompleteCheckout)();
       return;
     }
 
@@ -79,14 +139,18 @@ const OrderDetails = () => {
       const shipping = 4.99;
       const total = subtotal + tax + shipping;
       
+      const shippingAddress = shippingData || order.shippingAddress;
+      const formattedAddress = `${shippingAddress.fullName}, ${shippingAddress.addressLine1}, ${shippingAddress.addressLine2 ? shippingAddress.addressLine2 + ', ' : ''}${shippingAddress.city}, ${shippingAddress.state}, ${shippingAddress.zipCode}, ${shippingAddress.country}`;
+      
       const orderData = {
         user_id: user.id,
         status: 'pending' as const,
         amount: total,
-        shipping_address: 'Sample Address',
+        shipping_address: formattedAddress,
         shipping_fee: shipping,
         tax: tax,
-        created_at: new Date().toISOString()
+        created_at: new Date().toISOString(),
+        shipping_details: shippingAddress
       };
       
       const orderItems = cartItems.map((item: any) => ({
@@ -106,6 +170,9 @@ const OrderDetails = () => {
       let newOrderId;
       if (isDevelopmentMode) {
         newOrderId = `order-${uuidv4().substring(0, 8)}`;
+        
+        // Store shipping address in local storage for development mode
+        localStorage.setItem('lastOrderShipping', JSON.stringify(shippingAddress));
         
         toast({
           title: "Order placed successfully",
@@ -154,6 +221,16 @@ const OrderDetails = () => {
           shipping,
           total,
           estimatedDelivery: '3-5 business days from payment',
+          shippingAddress: {
+            fullName: '',
+            addressLine1: '',
+            addressLine2: '',
+            city: '',
+            state: '',
+            zipCode: '',
+            country: '',
+            phone: ''
+          }
         });
       }
       setIsLoading(false);
@@ -168,6 +245,19 @@ const OrderDetails = () => {
       
       try {
         if (isDevelopmentMode) {
+          // Get shipping address from local storage in development mode
+          const savedShippingAddress = localStorage.getItem('lastOrderShipping');
+          const shippingAddress = savedShippingAddress ? JSON.parse(savedShippingAddress) : {
+            fullName: 'John Doe',
+            addressLine1: '123 Main Street',
+            addressLine2: 'Apt 4B',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10001',
+            country: 'United States',
+            phone: '555-1234'
+          };
+          
           setTimeout(() => {
             setOrder({
               ...order,
@@ -177,7 +267,8 @@ const OrderDetails = () => {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
-              })
+              }),
+              shippingAddress
             });
             setIsLoading(false);
           }, 500);
@@ -197,7 +288,19 @@ const OrderDetails = () => {
           }
           
           if (data) {
-            setOrder(data);
+            setOrder({
+              ...data,
+              shippingAddress: data.shipping_details || {
+                fullName: 'John Doe',
+                addressLine1: '123 Main Street',
+                addressLine2: 'Apt 4B',
+                city: 'New York',
+                state: 'NY',
+                zipCode: '10001',
+                country: 'United States',
+                phone: '555-1234'
+              }
+            });
           }
           setIsLoading(false);
         }
@@ -264,6 +367,8 @@ const OrderDetails = () => {
     );
   }
 
+  const { shippingAddress } = order;
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -281,70 +386,206 @@ const OrderDetails = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="md:col-span-2">
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h2 className="text-xl font-semibold mb-1">Order Status</h2>
-                        <p className="text-gray-500">Placed on {order.date}</p>
-                      </div>
-                      {id !== 'cart123' && (
-                        <Button variant="outline">
-                          <Download className="h-4 w-4 mr-2" />
-                          Invoice
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <div className="mb-8">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-medium">Order Progress</span>
-                        <span className="text-sm text-gray-500">{completedSteps} of {orderProgress.length} steps completed</span>
-                      </div>
-                      <Progress value={progressPercentage} className="h-2" />
-                    </div>
-                    
-                    {id === 'cart123' ? (
-                      <div className="text-center p-6 bg-yellow-50 rounded-lg mb-6">
-                        <AlertTriangle className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
-                        <h3 className="text-lg font-medium text-yellow-700">This is your shopping cart</h3>
-                        <p className="mt-2 text-yellow-600">Complete your payment to place your order</p>
-                        <Button 
-                          className="mt-4" 
-                          onClick={handleCompleteCheckout}
-                          disabled={isProcessing}
-                        >
-                          {isProcessing ? 'Processing...' : 'Complete Checkout'}
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-6">
-                        {orderProgress.map((step, index) => (
-                          <div key={step.id} className="flex items-start">
-                            <div className={`rounded-full h-10 w-10 flex items-center justify-center mr-4 flex-shrink-0 ${
-                              step.completed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
-                            }`}>
-                              <step.icon className="h-5 w-5" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex justify-between">
-                                <h3 className="font-medium">{step.name}</h3>
-                                {step.date && <span className="text-sm text-gray-500">{step.date}</span>}
-                              </div>
-                              <p className="text-sm text-gray-500 mt-1">
-                                {index === 0 && 'Your order has been confirmed.'}
-                                {index === 1 && 'Your order is being processed and printed.'}
-                                {index === 2 && 'Your order will be ready for shipping soon.'}
-                                {index === 3 && `Expected delivery: ${order.estimatedDelivery}`}
-                                {index === 4 && 'Your order has been delivered.'}
-                              </p>
-                            </div>
+                {id === 'cart123' && showShippingForm ? (
+                  <Card className="mb-8">
+                    <CardContent className="p-6">
+                      <h2 className="text-xl font-semibold mb-6">Shipping Information</h2>
+                      
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit(handleCompleteCheckout)} className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="fullName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Full Name</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="John Doe" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={form.control}
+                              name="phone"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Phone Number</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="(555) 123-4567" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           </div>
-                        ))}
+                          
+                          <FormField
+                            control={form.control}
+                            name="addressLine1"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Address Line 1</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="123 Main Street" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="addressLine2"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Address Line 2 (Optional)</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="Apt 4B" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="city"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>City</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="New York" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={form.control}
+                              name="state"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>State</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="NY" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={form.control}
+                              name="zipCode"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Zip Code</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="10001" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                          
+                          <FormField
+                            control={form.control}
+                            name="country"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Country</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="United States" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <div className="flex justify-end">
+                            <Button 
+                              type="submit"
+                              disabled={isProcessing || order.items.length === 0}
+                            >
+                              {isProcessing ? 'Processing...' : 'Continue to Payment'}
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-6">
+                        <div>
+                          <h2 className="text-xl font-semibold mb-1">Order Status</h2>
+                          <p className="text-gray-500">Placed on {order.date}</p>
+                        </div>
+                        {id !== 'cart123' && (
+                          <Button variant="outline">
+                            <Download className="h-4 w-4 mr-2" />
+                            Invoice
+                          </Button>
+                        )}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                      
+                      <div className="mb-8">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-medium">Order Progress</span>
+                          <span className="text-sm text-gray-500">{completedSteps} of {orderProgress.length} steps completed</span>
+                        </div>
+                        <Progress value={progressPercentage} className="h-2" />
+                      </div>
+                      
+                      {id === 'cart123' ? (
+                        <div className="text-center p-6 bg-yellow-50 rounded-lg mb-6">
+                          <AlertTriangle className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
+                          <h3 className="text-lg font-medium text-yellow-700">This is your shopping cart</h3>
+                          <p className="mt-2 text-yellow-600">Add your shipping address to proceed with your order</p>
+                          <Button 
+                            className="mt-4" 
+                            onClick={() => setShowShippingForm(true)}
+                          >
+                            Add Shipping Address
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-6">
+                          {orderProgress.map((step, index) => (
+                            <div key={step.id} className="flex items-start">
+                              <div className={`rounded-full h-10 w-10 flex items-center justify-center mr-4 flex-shrink-0 ${
+                                step.completed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'
+                              }`}>
+                                <step.icon className="h-5 w-5" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex justify-between">
+                                  <h3 className="font-medium">{step.name}</h3>
+                                  {step.date && <span className="text-sm text-gray-500">{step.date}</span>}
+                                </div>
+                                <p className="text-sm text-gray-500 mt-1">
+                                  {index === 0 && 'Your order has been confirmed.'}
+                                  {index === 1 && 'Your order is being processed and printed.'}
+                                  {index === 2 && 'Your order will be ready for shipping soon.'}
+                                  {index === 3 && `Expected delivery: ${order.estimatedDelivery}`}
+                                  {index === 4 && 'Your order has been delivered.'}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
                 
                 {id !== 'cart123' && (
                   <Card className="mt-8">
@@ -355,11 +596,12 @@ const OrderDetails = () => {
                         <div>
                           <h3 className="text-sm font-medium text-gray-500 mb-2">Shipping Address</h3>
                           <div className="space-y-1">
-                            <p className="font-medium">John Doe</p>
-                            <p>123 Main Street</p>
-                            <p>Apt 4B</p>
-                            <p>New York, NY 10001</p>
-                            <p>United States</p>
+                            <p className="font-medium">{shippingAddress.fullName}</p>
+                            <p>{shippingAddress.addressLine1}</p>
+                            {shippingAddress.addressLine2 && <p>{shippingAddress.addressLine2}</p>}
+                            <p>{shippingAddress.city}, {shippingAddress.state} {shippingAddress.zipCode}</p>
+                            <p>{shippingAddress.country}</p>
+                            <p className="mt-2">{shippingAddress.phone}</p>
                           </div>
                         </div>
                         
@@ -384,11 +626,11 @@ const OrderDetails = () => {
                         <div>
                           <h3 className="text-sm font-medium text-gray-500 mb-2">Billing Address</h3>
                           <div className="space-y-1">
-                            <p className="font-medium">John Doe</p>
-                            <p>123 Main Street</p>
-                            <p>Apt 4B</p>
-                            <p>New York, NY 10001</p>
-                            <p>United States</p>
+                            <p className="font-medium">{shippingAddress.fullName}</p>
+                            <p>{shippingAddress.addressLine1}</p>
+                            {shippingAddress.addressLine2 && <p>{shippingAddress.addressLine2}</p>}
+                            <p>{shippingAddress.city}, {shippingAddress.state} {shippingAddress.zipCode}</p>
+                            <p>{shippingAddress.country}</p>
                           </div>
                         </div>
                       </div>
@@ -406,13 +648,12 @@ const OrderDetails = () => {
                   total={order.total}
                 />
                 
-                {id === 'cart123' && (
+                {id === 'cart123' && !showShippingForm && (
                   <Button 
                     className="w-full mt-4" 
-                    onClick={handleCompleteCheckout}
-                    disabled={isProcessing}
+                    onClick={() => setShowShippingForm(true)}
                   >
-                    {isProcessing ? 'Processing...' : 'Complete Checkout'}
+                    Proceed to Checkout
                   </Button>
                 )}
               </div>
