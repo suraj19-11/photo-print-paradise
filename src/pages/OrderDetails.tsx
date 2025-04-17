@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Printer, ArrowLeft, Download, Clock, Truck, CheckCircle, AlertTriangle } from 'lucide-react';
@@ -25,7 +24,6 @@ const OrderDetails = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Sample order data - in a real app, this would come from an API
   const [order, setOrder] = useState({
     id: id || 'ORD-1234',
     date: 'May 15, 2023',
@@ -56,7 +54,6 @@ const OrderDetails = () => {
     estimatedDelivery: 'May 22 - May 24, 2023',
   });
 
-  // Handle cart checkout
   const handleCompleteCheckout = async () => {
     if (!user) {
       toast({
@@ -71,31 +68,27 @@ const OrderDetails = () => {
     setIsProcessing(true);
     
     try {
-      // Get cart items from localStorage
       const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]');
       
       if (cartItems.length === 0) {
         throw new Error("Your cart is empty");
       }
       
-      // Calculate totals
       const subtotal = cartItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-      const tax = subtotal * 0.08; // 8% tax
+      const tax = subtotal * 0.08;
       const shipping = 4.99;
       const total = subtotal + tax + shipping;
       
-      // Create order object
       const orderData = {
         user_id: user.id,
-        status: 'confirmed',
+        status: 'pending' as const,
         amount: total,
-        shipping_address: 'Sample Address', // In real app, get from form
+        shipping_address: 'Sample Address',
         shipping_fee: shipping,
         tax: tax,
         created_at: new Date().toISOString()
       };
       
-      // Create order items
       const orderItems = cartItems.map((item: any) => ({
         product_name: item.name,
         quantity: item.quantity,
@@ -110,27 +103,21 @@ const OrderDetails = () => {
         file_url: item.fileUrl || null
       }));
       
-      // If in development mode, create a mock order
       let newOrderId;
       if (isDevelopmentMode) {
-        // Create a mock order
         newOrderId = `order-${uuidv4().substring(0, 8)}`;
         
-        // Show success message
         toast({
           title: "Order placed successfully",
           description: "Your order has been confirmed."
         });
       } else {
-        // Create real order in database
         const orderResult = await createOrder(orderData, orderItems);
         newOrderId = orderResult.id;
       }
       
-      // Clear cart
       localStorage.removeItem('cartItems');
       
-      // Redirect to the real order page
       navigate(`/order/${newOrderId}`);
       
     } catch (err: any) {
@@ -144,14 +131,12 @@ const OrderDetails = () => {
     }
   };
 
-  // Special handling for mock cart
   useEffect(() => {
     if (id === 'cart123') {
       const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]');
       if (cartItems.length > 0) {
-        // Calculate totals
         const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const tax = subtotal * 0.08; // 8% tax
+        const tax = subtotal * 0.08;
         const shipping = 4.99;
         const total = subtotal + tax + shipping;
         
@@ -175,7 +160,6 @@ const OrderDetails = () => {
       return;
     }
 
-    // Load real order data
     const loadOrder = async () => {
       if (!id || !user) {
         setIsLoading(false);
@@ -184,7 +168,6 @@ const OrderDetails = () => {
       
       try {
         if (isDevelopmentMode) {
-          // Mock data for development
           setTimeout(() => {
             setOrder({
               ...order,
@@ -199,7 +182,6 @@ const OrderDetails = () => {
             setIsLoading(false);
           }, 500);
         } else {
-          // Real implementation with Supabase
           const { data, error } = await supabase
             .from('orders')
             .select(`
@@ -234,7 +216,6 @@ const OrderDetails = () => {
     loadOrder();
   }, [id, user, toast]);
 
-  // Order progress steps
   const orderProgress = [
     { id: 1, name: 'Confirmed', icon: CheckCircle, completed: true, date: order.date },
     { id: 2, name: 'Processing', icon: Printer, completed: order.status !== 'pending', date: order.status !== 'pending' ? 'May 16, 2023' : undefined },
@@ -243,7 +224,6 @@ const OrderDetails = () => {
     { id: 5, name: 'Delivered', icon: CheckCircle, completed: order.status === 'delivered' },
   ];
 
-  // Calculate progress percentage
   const completedSteps = orderProgress.filter(step => step.completed).length;
   const progressPercentage = (completedSteps / orderProgress.length) * 100;
 
