@@ -1,7 +1,6 @@
 
-import { ShoppingBag, Truck, ChevronRight } from 'lucide-react';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { ShoppingBag, Truck } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 
 interface OrderSummaryProps {
@@ -18,6 +17,7 @@ interface OrderSummaryProps {
   tax?: number;
   shipping?: number;
   total?: number;
+  showCheckoutButton?: boolean;
 }
 
 const OrderSummary = ({ 
@@ -25,7 +25,8 @@ const OrderSummary = ({
   subtotal = 0, 
   tax = 0, 
   shipping = 0, 
-  total = 0 
+  total = 0,
+  showCheckoutButton = false
 }: OrderSummaryProps) => {
   // Example data if none is provided
   const demoItems = [
@@ -123,12 +124,6 @@ const OrderSummary = ({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="p-6 pt-0">
-        <Button className="w-full">
-          Proceed to Checkout
-          <ChevronRight className="ml-2 h-4 w-4" />
-        </Button>
-      </CardFooter>
     </Card>
   );
 };

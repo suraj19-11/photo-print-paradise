@@ -13,6 +13,8 @@ import OrderSummary from '@/components/orders/OrderSummary';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase, isDevelopmentMode } from '@/lib/supabase';
+import { createOrder } from '@/services/orderService';
+import { v4 as uuidv4 } from 'uuid';
 
 const OrderDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +22,7 @@ const OrderDetails = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Sample order data - in a real app, this would come from an API
@@ -52,6 +55,94 @@ const OrderDetails = () => {
     total: 11.20,
     estimatedDelivery: 'May 22 - May 24, 2023',
   });
+
+  // Handle cart checkout
+  const handleCompleteCheckout = async () => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please login to complete your order",
+        variant: "destructive"
+      });
+      navigate('/login');
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      // Get cart items from localStorage
+      const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]');
+      
+      if (cartItems.length === 0) {
+        throw new Error("Your cart is empty");
+      }
+      
+      // Calculate totals
+      const subtotal = cartItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+      const tax = subtotal * 0.08; // 8% tax
+      const shipping = 4.99;
+      const total = subtotal + tax + shipping;
+      
+      // Create order object
+      const orderData = {
+        user_id: user.id,
+        status: 'confirmed',
+        amount: total,
+        shipping_address: 'Sample Address', // In real app, get from form
+        shipping_fee: shipping,
+        tax: tax,
+        created_at: new Date().toISOString()
+      };
+      
+      // Create order items
+      const orderItems = cartItems.map((item: any) => ({
+        product_name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        options: {
+          size: item.size,
+          paper: item.paper,
+          finish: item.finish,
+          docOption: item.docOption
+        },
+        image_url: item.imageUrl || null,
+        file_url: item.fileUrl || null
+      }));
+      
+      // If in development mode, create a mock order
+      let newOrderId;
+      if (isDevelopmentMode) {
+        // Create a mock order
+        newOrderId = `order-${uuidv4().substring(0, 8)}`;
+        
+        // Show success message
+        toast({
+          title: "Order placed successfully",
+          description: "Your order has been confirmed."
+        });
+      } else {
+        // Create real order in database
+        const orderResult = await createOrder(orderData, orderItems);
+        newOrderId = orderResult.id;
+      }
+      
+      // Clear cart
+      localStorage.removeItem('cartItems');
+      
+      // Redirect to the real order page
+      navigate(`/order/${newOrderId}`);
+      
+    } catch (err: any) {
+      console.error('Error completing checkout:', err);
+      toast({
+        variant: "destructive",
+        title: "Checkout failed",
+        description: err.message || "Failed to complete your order. Please try again."
+      });
+      setIsProcessing(false);
+    }
+  };
 
   // Special handling for mock cart
   useEffect(() => {
@@ -95,6 +186,16 @@ const OrderDetails = () => {
         if (isDevelopmentMode) {
           // Mock data for development
           setTimeout(() => {
+            setOrder({
+              ...order,
+              id: id,
+              status: 'confirmed',
+              date: new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })
+            });
             setIsLoading(false);
           }, 500);
         } else {
@@ -228,8 +329,12 @@ const OrderDetails = () => {
                         <AlertTriangle className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
                         <h3 className="text-lg font-medium text-yellow-700">This is your shopping cart</h3>
                         <p className="mt-2 text-yellow-600">Complete your payment to place your order</p>
-                        <Button className="mt-4" onClick={() => navigate('/upload')}>
-                          Continue to Checkout
+                        <Button 
+                          className="mt-4" 
+                          onClick={handleCompleteCheckout}
+                          disabled={isProcessing}
+                        >
+                          {isProcessing ? 'Processing...' : 'Complete Checkout'}
                         </Button>
                       </div>
                     ) : (
@@ -322,8 +427,12 @@ const OrderDetails = () => {
                 />
                 
                 {id === 'cart123' && (
-                  <Button className="w-full mt-4" onClick={() => navigate('/upload')}>
-                    Proceed to Checkout
+                  <Button 
+                    className="w-full mt-4" 
+                    onClick={handleCompleteCheckout}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? 'Processing...' : 'Complete Checkout'}
                   </Button>
                 )}
               </div>
