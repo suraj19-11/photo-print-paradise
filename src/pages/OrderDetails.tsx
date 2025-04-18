@@ -29,6 +29,12 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase, isDevelopmentMode } from '@/lib/supabase';
 import { createOrder } from '@/services/orderService';
 import { v4 as uuidv4 } from 'uuid';
+import { 
+  initializeRazorpay, 
+  createRazorpayOrder, 
+  initiateRazorpayPayment,
+  RazorpayResponse
+} from '@/services/paymentService';
 
 // Define the form schema
 const shippingFormSchema = z.object({
@@ -53,6 +59,7 @@ const OrderDetails = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showShippingForm, setShowShippingForm] = useState(id === 'cart123');
+  const [isRazorpayReady, setIsRazorpayReady] = useState(false);
   
   const [order, setOrder] = useState({
     id: id || 'ORD-1234',
@@ -94,6 +101,38 @@ const OrderDetails = () => {
     }
   });
 
+  // Initialize Razorpay
+  useEffect(() => {
+    const initRazorpay = async () => {
+      try {
+        console.log("Initializing Razorpay...");
+        const ready = await initializeRazorpay();
+        setIsRazorpayReady(ready);
+        
+        if (ready) {
+          console.log("Razorpay initialized successfully");
+        } else {
+          console.error("Failed to initialize Razorpay");
+          toast({
+            title: "Payment service unavailable",
+            description: "Unable to load payment service. Please try again later.",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        console.error("Error initializing Razorpay:", error);
+        setIsRazorpayReady(false);
+        toast({
+          title: "Payment service unavailable",
+          description: "Unable to load payment service. Please try again later.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    initRazorpay();
+  }, [toast]);
+
   // Form definition
   const form = useForm<ShippingFormValues>({
     resolver: zodResolver(shippingFormSchema),
@@ -104,10 +143,145 @@ const OrderDetails = () => {
       city: '',
       state: '',
       zipCode: '',
-      country: 'United States',
+      country: 'India',
       phone: '',
     },
   });
+
+  const initiatePayment = async (shippingData: ShippingFormValues) => {
+    if (!isRazorpayReady) {
+      toast({
+        title: "Payment service unavailable",
+        description: "Please try again later.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    try {
+      const totalAmount = order.total;
+      
+      // Create a Razorpay order
+      const orderResponse = await createRazorpayOrder(
+        totalAmount, 
+        `PRINT-${Date.now()}`
+      );
+      
+      console.log("Order created:", orderResponse);
+      
+      // Store shipping address temporarily
+      localStorage.setItem('pendingOrderShipping', JSON.stringify(shippingData));
+      localStorage.setItem('pendingOrderId', orderResponse.id);
+      
+      // Initialize the payment
+      initiateRazorpayPayment({
+        amount: orderResponse.amount,
+        name: "PrintPoint",
+        description: `Print order (${order.items.length} items)`,
+        order_id: orderResponse.id,
+        prefill: {
+          name: shippingData.fullName,
+          email: user?.email || undefined,
+          contact: shippingData.phone
+        },
+        handler: (response: RazorpayResponse) => {
+          handlePaymentSuccess(response, orderResponse.id, shippingData);
+        },
+        theme: {
+          color: "#7c3aed" // Primary color for Tailwind's purple-600
+        }
+      });
+    } catch (error: any) {
+      console.error("Payment error:", error);
+      toast({
+        title: "Payment failed",
+        description: error.message || "Could not process payment. Please try again.",
+        variant: "destructive"
+      });
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePaymentSuccess = async (
+    response: RazorpayResponse, 
+    orderId: string, 
+    shippingData: ShippingFormValues
+  ) => {
+    try {
+      // Create the order in our database
+      const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]');
+      const subtotal = cartItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+      const tax = subtotal * 0.08;
+      const shipping = 4.99;
+      const total = subtotal + tax + shipping;
+      
+      const formattedAddress = `${shippingData.fullName}, ${shippingData.addressLine1}, ${shippingData.addressLine2 ? shippingData.addressLine2 + ', ' : ''}${shippingData.city}, ${shippingData.state}, ${shippingData.zipCode}, ${shippingData.country}`;
+      
+      const orderData = {
+        user_id: user!.id,
+        status: 'confirmed' as const,
+        amount: total,
+        shipping_address: formattedAddress,
+        shipping_fee: shipping,
+        tax: tax,
+        created_at: new Date().toISOString(),
+        shipping_details: shippingData,
+        payment_id: response.razorpay_payment_id,
+        order_id: orderId
+      };
+      
+      const orderItems = cartItems.map((item: any) => ({
+        product_name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        options: {
+          size: item.size,
+          paper: item.paper,
+          finish: item.finish,
+          docOption: item.docOption,
+          colorOption: item.colorOption,
+          sideOption: item.sideOption
+        },
+        image_url: item.imageUrl || null,
+        file_url: item.fileUrl || null
+      }));
+      
+      let newOrderId;
+      if (isDevelopmentMode) {
+        newOrderId = `order-${uuidv4().substring(0, 8)}`;
+        
+        // Store shipping address in local storage for development mode
+        localStorage.setItem('lastOrderShipping', JSON.stringify(shippingData));
+        
+        toast({
+          title: "Payment successful",
+          description: "Your order has been placed successfully."
+        });
+      } else {
+        const orderResult = await createOrder(orderData, orderItems);
+        newOrderId = orderResult.id;
+      }
+      
+      // Clear cart and temporary storage
+      localStorage.removeItem('cartItems');
+      localStorage.removeItem('pendingOrderShipping');
+      localStorage.removeItem('pendingOrderId');
+      
+      // Navigate to order confirmation page
+      navigate(`/order/${newOrderId}`);
+      
+    } catch (error: any) {
+      console.error('Error processing order after payment:', error);
+      toast({
+        variant: "destructive",
+        title: "Order processing failed",
+        description: error.message || "Your payment was successful but we couldn't process your order. Please contact support."
+      });
+      setIsProcessing(false);
+    }
+  };
 
   const handleCompleteCheckout = async (shippingData?: ShippingFormValues) => {
     if (!user) {
@@ -121,80 +295,12 @@ const OrderDetails = () => {
     }
 
     if (showShippingForm && !shippingData) {
-      form.handleSubmit(handleCompleteCheckout)();
+      form.handleSubmit((data) => initiatePayment(data))();
       return;
     }
 
-    setIsProcessing(true);
-    
-    try {
-      const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]');
-      
-      if (cartItems.length === 0) {
-        throw new Error("Your cart is empty");
-      }
-      
-      const subtotal = cartItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-      const tax = subtotal * 0.08;
-      const shipping = 4.99;
-      const total = subtotal + tax + shipping;
-      
-      const shippingAddress = shippingData || order.shippingAddress;
-      const formattedAddress = `${shippingAddress.fullName}, ${shippingAddress.addressLine1}, ${shippingAddress.addressLine2 ? shippingAddress.addressLine2 + ', ' : ''}${shippingAddress.city}, ${shippingAddress.state}, ${shippingAddress.zipCode}, ${shippingAddress.country}`;
-      
-      const orderData = {
-        user_id: user.id,
-        status: 'pending' as const,
-        amount: total,
-        shipping_address: formattedAddress,
-        shipping_fee: shipping,
-        tax: tax,
-        created_at: new Date().toISOString(),
-        shipping_details: shippingAddress
-      };
-      
-      const orderItems = cartItems.map((item: any) => ({
-        product_name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        options: {
-          size: item.size,
-          paper: item.paper,
-          finish: item.finish,
-          docOption: item.docOption
-        },
-        image_url: item.imageUrl || null,
-        file_url: item.fileUrl || null
-      }));
-      
-      let newOrderId;
-      if (isDevelopmentMode) {
-        newOrderId = `order-${uuidv4().substring(0, 8)}`;
-        
-        // Store shipping address in local storage for development mode
-        localStorage.setItem('lastOrderShipping', JSON.stringify(shippingAddress));
-        
-        toast({
-          title: "Order placed successfully",
-          description: "Your order has been confirmed."
-        });
-      } else {
-        const orderResult = await createOrder(orderData, orderItems);
-        newOrderId = orderResult.id;
-      }
-      
-      localStorage.removeItem('cartItems');
-      
-      navigate(`/order/${newOrderId}`);
-      
-    } catch (err: any) {
-      console.error('Error completing checkout:', err);
-      toast({
-        variant: "destructive",
-        title: "Checkout failed",
-        description: err.message || "Failed to complete your order. Please try again."
-      });
-      setIsProcessing(false);
+    if (shippingData) {
+      initiatePayment(shippingData);
     }
   };
 
@@ -254,7 +360,7 @@ const OrderDetails = () => {
             city: 'New York',
             state: 'NY',
             zipCode: '10001',
-            country: 'United States',
+            country: 'India',
             phone: '555-1234'
           };
           
@@ -297,7 +403,7 @@ const OrderDetails = () => {
                 city: 'New York',
                 state: 'NY',
                 zipCode: '10001',
-                country: 'United States',
+                country: 'India',
                 phone: '555-1234'
               }
             });
@@ -317,7 +423,7 @@ const OrderDetails = () => {
     };
     
     loadOrder();
-  }, [id, user, toast]);
+  }, [id, user, toast, order]);
 
   const orderProgress = [
     { id: 1, name: 'Confirmed', icon: CheckCircle, completed: true, date: order.date },

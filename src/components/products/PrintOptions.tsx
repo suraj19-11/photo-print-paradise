@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -41,12 +42,13 @@ const finishOptions = [
   { id: 'finish-3', name: 'White Border', price: 0.10 },
 ];
 
-// Document print options (for document uploads)
-const documentOptions = [
+// Document color options
+const colorOptions = [
   { id: 'color-1', name: 'Color print', price: 0.35 },
   { id: 'color-2', name: 'Black & White', price: 0.08 },
 ];
 
+// Document print sides options
 const printSides = [
   { id: 'side-1', name: 'Single-sided', price: 0.00 },
   { id: 'side-2', name: 'Double-sided', price: 0.05 },
@@ -67,15 +69,14 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
   const [selectedSize, setSelectedSize] = useState(sizes[0].id);
   const [selectedPaper, setSelectedPaper] = useState(paperTypes[0].id);
   const [selectedFinish, setSelectedFinish] = useState(finishOptions[0].id);
-  const [selectedDocOption, setSelectedDocOption] = useState(documentOptions[0].id);
+  const [selectedColorOption, setSelectedColorOption] = useState(colorOptions[0].id);
+  const [selectedSideOption, setSelectedSideOption] = useState(printSides[0].id);
   const [quantity, setQuantity] = useState(1);
   const [isRazorpayReady, setIsRazorpayReady] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
-  const [selectedColorOption, setSelectedColorOption] = useState(documentOptions[0].id);
-  const [selectedSideOption, setSelectedSideOption] = useState(printSides[0].id);
 
   useEffect(() => {
     // Initialize Razorpay when the component mounts
@@ -113,8 +114,14 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
     const sizePrice = sizes.find(size => size.id === selectedSize)?.price || 0;
     const paperPrice = paperTypes.find(paper => paper.id === selectedPaper)?.price || 0;
     const finishPrice = finishOptions.find(finish => finish.id === selectedFinish)?.price || 0;
-    const colorOptionPrice = fileType === 'document' ? (documentOptions.find(option => option.id === selectedColorOption)?.price || 0) : 0;
-    const sideOptionPrice = fileType === 'document' ? (printSides.find(option => option.id === selectedSideOption)?.price || 0) : 0;
+    
+    let colorOptionPrice = 0;
+    let sideOptionPrice = 0;
+    
+    if (fileType === 'document') {
+      colorOptionPrice = colorOptions.find(option => option.id === selectedColorOption)?.price || 0;
+      sideOptionPrice = printSides.find(option => option.id === selectedSideOption)?.price || 0;
+    }
     
     return ((sizePrice + paperPrice + finishPrice + colorOptionPrice + sideOptionPrice) * quantity).toFixed(2);
   };
@@ -152,37 +159,18 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
       const size = sizes.find(size => size.id === selectedSize)?.name;
       const paper = paperTypes.find(paper => paper.id === selectedPaper)?.name;
       const finish = finishOptions.find(finish => finish.id === selectedFinish)?.name;
-      const docOption = fileType === 'document' ? 
-        documentOptions.find(option => option.id === selectedDocOption)?.name : null;
+      const colorOption = fileType === 'document' ? 
+        colorOptions.find(option => option.id === selectedColorOption)?.name : null;
+      const sideOption = fileType === 'document' ?
+        printSides.find(option => option.id === selectedSideOption)?.name : null;
       
       const totalAmount = parseFloat(calculatePrice());
       
-      console.log("Creating Razorpay order for amount:", totalAmount);
-      // Create a Razorpay order
-      const orderResponse = await createRazorpayOrder(
-        totalAmount, 
-        `PRINT-${Date.now()}`
-      );
+      // Add item to cart first
+      handleAddToCart();
       
-      console.log("Order created:", orderResponse);
-      
-      // Initialize the payment
-      initiateRazorpayPayment({
-        amount: orderResponse.amount,
-        name: "PrintPoint",
-        description: `${quantity} ${size} ${paper} ${finish} print(s)${docOption ? ` (${docOption})` : ''}`,
-        order_id: orderResponse.id,
-        prefill: {
-          name: profile ? `${profile.first_name} ${profile.last_name}` : undefined,
-          email: user.email || undefined,
-        },
-        handler: (response: RazorpayResponse) => {
-          handlePaymentSuccess(response, orderResponse.id);
-        },
-        theme: {
-          color: "#7c3aed" // Primary color for Tailwind's purple-600
-        }
-      });
+      // Navigate to checkout
+      navigate('/order/cart123');
     } catch (error) {
       console.error('Payment initialization error:', error);
       toast({
@@ -195,46 +183,31 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
     }
   };
 
-  const handlePaymentSuccess = (response: RazorpayResponse, orderId: string) => {
-    const size = sizes.find(size => size.id === selectedSize)?.name;
-    const paper = paperTypes.find(paper => paper.id === selectedPaper)?.name;
-    const finish = finishOptions.find(finish => finish.id === selectedFinish)?.name;
-    
-    // Here you would typically call your backend to verify the payment
-    // and create the order in your database
-    
-    toast({
-      title: "Payment successful",
-      description: `Your payment for ${quantity} ${size} ${paper} ${finish} print(s) has been processed successfully.`,
-    });
-    
-    // Simulate order creation and redirect to order details
-    setTimeout(() => {
-      navigate(`/order/${orderId}`);
-    }, 1500);
-  };
-
   const handleAddToCart = () => {
     try {
       const size = sizes.find(size => size.id === selectedSize);
       const paper = paperTypes.find(paper => paper.id === selectedPaper);
       const finish = finishOptions.find(finish => finish.id === selectedFinish);
-      const docOption = documentOptions.find(option => option.id === selectedDocOption);
+      const colorOption = colorOptions.find(option => option.id === selectedColorOption);
+      const sideOption = printSides.find(option => option.id === selectedSideOption);
       
       if (!size || !paper || !finish) {
         throw new Error("Invalid selection");
       }
       
-      const totalItemPrice = fileType === 'document' 
-        ? size.price + paper.price + finish.price + (docOption?.price || 0)
-        : size.price + paper.price + finish.price;
+      let totalItemPrice = size.price + paper.price + finish.price;
+      
+      if (fileType === 'document') {
+        totalItemPrice += (colorOption?.price || 0) + (sideOption?.price || 0);
+      }
       
       const item = {
         name: fileType === 'photo' ? 'Photo Print' : 'Document Print',
         size: size.name,
         paper: paper.name,
         finish: finish.name,
-        docOption: fileType === 'document' ? docOption?.name : undefined,
+        colorOption: fileType === 'document' ? colorOption?.name : undefined,
+        sideOption: fileType === 'document' ? sideOption?.name : undefined,
         quantity: quantity,
         price: parseFloat(totalItemPrice.toFixed(2)),
         imageUrl: fileType === 'photo' ? selectedFile?.url : undefined,
@@ -342,7 +315,7 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
                 onValueChange={setSelectedColorOption}
                 className="grid grid-cols-1 md:grid-cols-2 gap-3"
               >
-                {documentOptions.map(option => (
+                {colorOptions.map(option => (
                   <div key={option.id} className="flex items-center space-x-2">
                     <RadioGroupItem value={option.id} id={option.id} />
                     <Label htmlFor={option.id} className="flex justify-between w-full">
@@ -420,7 +393,7 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
           <Button 
             className="w-full" 
             onClick={handlePayment}
-            disabled={isProcessingPayment || !isRazorpayReady}
+            disabled={isProcessingPayment}
           >
             {isProcessingPayment ? (
               <>

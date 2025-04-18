@@ -7,12 +7,13 @@ export interface CartItem {
   size: string;
   paper: string;
   finish?: string;
-  docOption?: string;
+  colorOption?: string;  // Updated for color/B&W option
+  sideOption?: string;   // Updated for one/two-sided option
   quantity: number;
   price: number;
   imageUrl?: string;
-  fileUrl?: string; // Add fileUrl for document items
-  fileName?: string; // Add fileName for better display
+  fileUrl?: string;
+  fileName?: string;
   type: 'photo' | 'document';
 }
 
