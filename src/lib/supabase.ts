@@ -50,7 +50,7 @@ export type UserProfile = {
 export type Order = {
   id: string;
   user_id: string;
-  status: 'pending' | 'processing' | 'completed' | 'cancelled';
+  status: 'pending' | 'processing' | 'completed' | 'cancelled' | 'confirmed';
   total_amount: number;
   created_at: string;
   updated_at: string;
