@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,10 +43,13 @@ const finishOptions = [
 
 // Document print options (for document uploads)
 const documentOptions = [
-  { id: 'doc-1', name: 'Single-sided', price: 0.10 },
-  { id: 'doc-2', name: 'Double-sided', price: 0.18 },
-  { id: 'doc-3', name: 'Color print', price: 0.35 },
-  { id: 'doc-4', name: 'Black & White', price: 0.08 },
+  { id: 'color-1', name: 'Color print', price: 0.35 },
+  { id: 'color-2', name: 'Black & White', price: 0.08 },
+];
+
+const printSides = [
+  { id: 'side-1', name: 'Single-sided', price: 0.00 },
+  { id: 'side-2', name: 'Double-sided', price: 0.05 },
 ];
 
 interface PrintOptionsProps {
@@ -72,6 +74,8 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const [selectedColorOption, setSelectedColorOption] = useState(documentOptions[0].id);
+  const [selectedSideOption, setSelectedSideOption] = useState(printSides[0].id);
 
   useEffect(() => {
     // Initialize Razorpay when the component mounts
@@ -109,9 +113,10 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
     const sizePrice = sizes.find(size => size.id === selectedSize)?.price || 0;
     const paperPrice = paperTypes.find(paper => paper.id === selectedPaper)?.price || 0;
     const finishPrice = finishOptions.find(finish => finish.id === selectedFinish)?.price || 0;
-    const docOptionPrice = fileType === 'document' ? (documentOptions.find(option => option.id === selectedDocOption)?.price || 0) : 0;
+    const colorOptionPrice = fileType === 'document' ? (documentOptions.find(option => option.id === selectedColorOption)?.price || 0) : 0;
+    const sideOptionPrice = fileType === 'document' ? (printSides.find(option => option.id === selectedSideOption)?.price || 0) : 0;
     
-    return ((sizePrice + paperPrice + finishPrice + docOptionPrice) * quantity).toFixed(2);
+    return ((sizePrice + paperPrice + finishPrice + colorOptionPrice + sideOptionPrice) * quantity).toFixed(2);
   };
 
   const handlePayment = async () => {
@@ -329,24 +334,47 @@ const PrintOptions = ({ selectedFile, fileType = 'photo' }: PrintOptionsProps) =
 
         {/* Document Options Section - Only show for document type */}
         {fileType === 'document' && (
-          <div className="mb-6">
-            <h4 className="text-base font-medium mb-3">Print Options</h4>
-            <RadioGroup 
-              value={selectedDocOption} 
-              onValueChange={setSelectedDocOption}
-              className="grid grid-cols-1 md:grid-cols-2 gap-3"
-            >
-              {documentOptions.map(option => (
-                <div key={option.id} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option.id} id={option.id} />
-                  <Label htmlFor={option.id} className="flex justify-between w-full">
-                    <span>{option.name}</span>
-                    <span className="text-gray-500">₹{option.price.toFixed(2)}/page</span>
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
-          </div>
+          <>
+            <div className="mb-6">
+              <h4 className="text-base font-medium mb-3">Print Color</h4>
+              <RadioGroup 
+                value={selectedColorOption} 
+                onValueChange={setSelectedColorOption}
+                className="grid grid-cols-1 md:grid-cols-2 gap-3"
+              >
+                {documentOptions.map(option => (
+                  <div key={option.id} className="flex items-center space-x-2">
+                    <RadioGroupItem value={option.id} id={option.id} />
+                    <Label htmlFor={option.id} className="flex justify-between w-full">
+                      <span>{option.name}</span>
+                      <span className="text-gray-500">₹{option.price.toFixed(2)}/page</span>
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
+            <div className="mb-6">
+              <h4 className="text-base font-medium mb-3">Print Sides</h4>
+              <RadioGroup 
+                value={selectedSideOption} 
+                onValueChange={setSelectedSideOption}
+                className="grid grid-cols-1 md:grid-cols-2 gap-3"
+              >
+                {printSides.map(option => (
+                  <div key={option.id} className="flex items-center space-x-2">
+                    <RadioGroupItem value={option.id} id={option.id} />
+                    <Label htmlFor={option.id} className="flex justify-between w-full">
+                      <span>{option.name}</span>
+                      {option.price > 0 && (
+                        <span className="text-gray-500">+₹{option.price.toFixed(2)}/page</span>
+                      )}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+          </>
         )}
 
         {/* Quantity Section */}
