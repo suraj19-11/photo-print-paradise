@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Printer, ArrowLeft, Download, Clock, Truck, CheckCircle, AlertTriangle } from 'lucide-react';
@@ -35,8 +34,19 @@ import {
   initiateRazorpayPayment,
   RazorpayResponse
 } from '@/services/paymentService';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { cancelOrder } from '@/services/orderService';
 
-// Define the form schema
 const shippingFormSchema = z.object({
   fullName: z.string().min(3, { message: "Full name is required" }),
   addressLine1: z.string().min(5, { message: "Address line 1 is required" }),
@@ -101,7 +111,6 @@ const OrderDetails = () => {
     }
   });
 
-  // Initialize Razorpay
   useEffect(() => {
     const initRazorpay = async () => {
       try {
@@ -133,7 +142,6 @@ const OrderDetails = () => {
     initRazorpay();
   }, [toast]);
 
-  // Form definition
   const form = useForm<ShippingFormValues>({
     resolver: zodResolver(shippingFormSchema),
     defaultValues: {
@@ -163,7 +171,6 @@ const OrderDetails = () => {
     try {
       const totalAmount = order.total;
       
-      // Create a Razorpay order
       const orderResponse = await createRazorpayOrder(
         totalAmount, 
         `PRINT-${Date.now()}`
@@ -171,11 +178,9 @@ const OrderDetails = () => {
       
       console.log("Order created:", orderResponse);
       
-      // Store shipping address temporarily
       localStorage.setItem('pendingOrderShipping', JSON.stringify(shippingData));
       localStorage.setItem('pendingOrderId', orderResponse.id);
       
-      // Initialize the payment
       initiateRazorpayPayment({
         amount: orderResponse.amount,
         name: "PrintPoint",
@@ -210,7 +215,6 @@ const OrderDetails = () => {
     shippingData: ShippingFormValues
   ) => {
     try {
-      // Create the order in our database
       const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]');
       const subtotal = cartItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
       const tax = subtotal * 0.08;
@@ -252,7 +256,6 @@ const OrderDetails = () => {
       if (isDevelopmentMode) {
         newOrderId = `order-${uuidv4().substring(0, 8)}`;
         
-        // Store shipping address in local storage for development mode
         localStorage.setItem('lastOrderShipping', JSON.stringify(shippingData));
         
         toast({
@@ -264,12 +267,10 @@ const OrderDetails = () => {
         newOrderId = orderResult.id;
       }
       
-      // Clear cart and temporary storage
       localStorage.removeItem('cartItems');
       localStorage.removeItem('pendingOrderShipping');
       localStorage.removeItem('pendingOrderId');
       
-      // Navigate to order confirmation page
       navigate(`/order/${newOrderId}`);
       
     } catch (error: any) {
@@ -302,6 +303,42 @@ const OrderDetails = () => {
     if (shippingData) {
       initiatePayment(shippingData);
     }
+  };
+
+  const handleCancelOrder = async () => {
+    try {
+      await cancelOrder(id!);
+      toast({
+        title: "Order cancelled",
+        description: "Your order has been cancelled successfully.",
+      });
+      setOrder({
+        ...order,
+        status: 'cancelled'
+      });
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not cancel order. Please try again."
+      });
+    }
+  };
+
+  const handleRemoveItem = (itemId: string) => {
+    const updatedItems = order.items.filter(item => item.id !== itemId);
+    const newSubtotal = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const newTax = newSubtotal * 0.08;
+    const newTotal = newSubtotal + newTax + order.shipping;
+    
+    setOrder({
+      ...order,
+      items: updatedItems,
+      subtotal: newSubtotal,
+      tax: newTax,
+      total: newTotal
+    });
   };
 
   useEffect(() => {
@@ -351,7 +388,6 @@ const OrderDetails = () => {
       
       try {
         if (isDevelopmentMode) {
-          // Get shipping address from local storage in development mode
           const savedShippingAddress = localStorage.getItem('lastOrderShipping');
           const shippingAddress = savedShippingAddress ? JSON.parse(savedShippingAddress) : {
             fullName: 'John Doe',
@@ -635,12 +671,37 @@ const OrderDetails = () => {
                           <h2 className="text-xl font-semibold mb-1">Order Status</h2>
                           <p className="text-gray-500">Placed on {order.date}</p>
                         </div>
-                        {id !== 'cart123' && (
-                          <Button variant="outline">
-                            <Download className="h-4 w-4 mr-2" />
-                            Invoice
-                          </Button>
-                        )}
+                        <div className="flex gap-2">
+                          {id !== 'cart123' && order.status !== 'cancelled' && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive">
+                                  Cancel Order
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Cancel Order</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to cancel this order? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>No, keep order</AlertDialogCancel>
+                                  <AlertDialogAction onClick={handleCancelOrder}>
+                                    Yes, cancel order
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                          {id !== 'cart123' && (
+                            <Button variant="outline">
+                              <Download className="h-4 w-4 mr-2" />
+                              Invoice
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="mb-8">
@@ -752,6 +813,8 @@ const OrderDetails = () => {
                   tax={order.tax}
                   shipping={order.shipping}
                   total={order.total}
+                  isEditable={id === 'cart123'}
+                  onRemoveItem={id === 'cart123' ? handleRemoveItem : undefined}
                 />
                 
                 {id === 'cart123' && !showShippingForm && (

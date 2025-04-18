@@ -1,7 +1,19 @@
 
-import { ShoppingBag, Truck } from 'lucide-react';
+import { ShoppingBag, Truck, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface OrderSummaryProps {
   orderItems?: { 
@@ -18,6 +30,8 @@ interface OrderSummaryProps {
   shipping?: number;
   total?: number;
   showCheckoutButton?: boolean;
+  onRemoveItem?: (itemId: string) => void;
+  isEditable?: boolean;
 }
 
 const OrderSummary = ({ 
@@ -26,7 +40,9 @@ const OrderSummary = ({
   tax = 0, 
   shipping = 0, 
   total = 0,
-  showCheckoutButton = false
+  showCheckoutButton = false,
+  onRemoveItem,
+  isEditable = false
 }: OrderSummaryProps) => {
   // Example data if none is provided
   const demoItems = [
@@ -65,7 +81,7 @@ const OrderSummary = ({
 
         <div className="space-y-4 mb-6">
           {itemsToShow.map((item) => (
-            <div key={item.id} className="flex items-start">
+            <div key={item.id} className="flex items-start group">
               <div className="h-16 w-16 rounded bg-gray-100 mr-4 overflow-hidden flex-shrink-0">
                 {item.imageUrl ? (
                   <img 
@@ -85,8 +101,35 @@ const OrderSummary = ({
                   {item.size} • {item.paper} • Qty: {item.quantity}
                 </p>
               </div>
-              <div className="text-right">
+              <div className="text-right flex flex-col items-end">
                 <p className="font-medium">₹{item.price.toFixed(2)}</p>
+                {isEditable && onRemoveItem && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="p-0 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Item</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to remove this item from your order?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => onRemoveItem(item.id)}>
+                          Remove
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             </div>
           ))}

@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { Order, OrderItem } from '@/lib/supabase';
 
@@ -92,4 +91,8 @@ export const updateOrderStatus = async (id: string, status: Order['status']) => 
   }
 
   return data;
+};
+
+export const cancelOrder = async (id: string) => {
+  return updateOrderStatus(id, 'cancelled');
 };

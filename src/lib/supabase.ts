@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 // For development and testing purposes only
