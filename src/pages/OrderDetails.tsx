@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Printer, ArrowLeft, Download, Clock, Truck, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,12 +8,10 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useForm } from 'react-hook-form';
 import { 
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,7 +25,7 @@ import OrderSummary from '@/components/orders/OrderSummary';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase, isDevelopmentMode } from '@/lib/supabase';
-import { createOrder } from '@/services/orderService';
+import { createOrder, cancelOrder, getOrderById } from '@/services/orderService';
 import { v4 as uuidv4 } from 'uuid';
 import { 
   initializeRazorpay, 
@@ -45,7 +44,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { cancelOrder } from '@/services/orderService';
 
 const shippingFormSchema = z.object({
   fullName: z.string().min(3, { message: "Full name is required" }),
@@ -68,7 +66,7 @@ const OrderDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showShippingForm, setShowShippingForm] = useState(id === 'cart123');
+  const [showShippingForm, setShowShippingForm] = useState(false);
   const [isRazorpayReady, setIsRazorpayReady] = useState(false);
   
   const [order, setOrder] = useState({
@@ -142,6 +140,7 @@ const OrderDetails = () => {
     initRazorpay();
   }, [toast]);
 
+  // Initialize form with default values
   const form = useForm<ShippingFormValues>({
     resolver: zodResolver(shippingFormSchema),
     defaultValues: {
@@ -226,30 +225,27 @@ const OrderDetails = () => {
       const orderData = {
         user_id: user!.id,
         status: 'confirmed' as const,
-        amount: total,
+        total_amount: total,
         shipping_address: formattedAddress,
-        shipping_fee: shipping,
-        tax: tax,
+        shipping_method: 'Standard',
+        payment_method: 'Razorpay',
+        items_count: cartItems.length,
         created_at: new Date().toISOString(),
-        shipping_details: shippingData,
-        payment_id: response.razorpay_payment_id,
-        order_id: orderId
+        updated_at: new Date().toISOString()
       };
       
       const orderItems = cartItems.map((item: any) => ({
-        product_name: item.name,
+        product_id: item.id || uuidv4(),
         quantity: item.quantity,
         price: item.price,
-        options: {
+        print_options: {
           size: item.size,
           paper: item.paper,
           finish: item.finish,
           docOption: item.docOption,
           colorOption: item.colorOption,
           sideOption: item.sideOption
-        },
-        image_url: item.imageUrl || null,
-        file_url: item.fileUrl || null
+        }
       }));
       
       let newOrderId;
@@ -257,6 +253,11 @@ const OrderDetails = () => {
         newOrderId = `order-${uuidv4().substring(0, 8)}`;
         
         localStorage.setItem('lastOrderShipping', JSON.stringify(shippingData));
+        localStorage.setItem('lastOrder', JSON.stringify({
+          ...orderData,
+          id: newOrderId,
+          items: cartItems
+        }));
         
         toast({
           title: "Payment successful",
@@ -339,13 +340,18 @@ const OrderDetails = () => {
       tax: newTax,
       total: newTotal
     });
+    
+    // Update cart items in localStorage if we're on the cart page
+    if (id === 'cart123') {
+      localStorage.setItem('cartItems', JSON.stringify(updatedItems));
+    }
   };
 
-  useEffect(() => {
+  const loadOrderData = useCallback(async () => {
     if (id === 'cart123') {
       const cartItems = JSON.parse(localStorage.getItem('cartItems') || '[]');
       if (cartItems.length > 0) {
-        const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const subtotal = cartItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
         const tax = subtotal * 0.08;
         const shipping = 4.99;
         const total = subtotal + tax + shipping;
@@ -376,19 +382,23 @@ const OrderDetails = () => {
           }
         });
       }
+      setShowShippingForm(id === 'cart123'); // Auto-show shipping form for cart
       setIsLoading(false);
       return;
     }
 
-    const loadOrder = async () => {
-      if (!id || !user) {
-        setIsLoading(false);
-        return;
-      }
-      
-      try {
-        if (isDevelopmentMode) {
-          const savedShippingAddress = localStorage.getItem('lastOrderShipping');
+    if (!id || !user) {
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      if (isDevelopmentMode) {
+        const savedOrder = localStorage.getItem('lastOrder');
+        const savedShippingAddress = localStorage.getItem('lastOrderShipping');
+        
+        if (savedOrder) {
+          const orderData = JSON.parse(savedOrder);
           const shippingAddress = savedShippingAddress ? JSON.parse(savedShippingAddress) : {
             fullName: 'John Doe',
             addressLine1: '123 Main Street',
@@ -410,63 +420,82 @@ const OrderDetails = () => {
                 month: 'long',
                 day: 'numeric'
               }),
+              items: orderData.items || order.items,
+              subtotal: orderData.subtotal || order.subtotal,
+              tax: orderData.tax || order.tax,
+              shipping: orderData.shipping || order.shipping,
+              total: orderData.total_amount || order.total,
               shippingAddress
             });
             setIsLoading(false);
           }, 500);
         } else {
-          const { data, error } = await supabase
-            .from('orders')
-            .select(`
-              *,
-              order_items(*)
-            `)
-            .eq('id', id)
-            .eq('user_id', user.id)
-            .single();
-            
-          if (error) {
-            throw error;
-          }
-          
-          if (data) {
-            setOrder({
-              ...data,
-              shippingAddress: data.shipping_details || {
-                fullName: 'John Doe',
-                addressLine1: '123 Main Street',
-                addressLine2: 'Apt 4B',
-                city: 'New York',
-                state: 'NY',
-                zipCode: '10001',
-                country: 'India',
-                phone: '555-1234'
-              }
-            });
-          }
           setIsLoading(false);
         }
-      } catch (err) {
-        console.error('Error loading order:', err);
-        setError('Failed to load order details. Please try again later.');
+      } else {
+        const orderData = await getOrderById(id);
+        
+        if (orderData) {
+          const orderItems = orderData.order_items.map((item: any) => ({
+            id: item.id,
+            name: item.product_name || 'Print Item',
+            size: item.print_options?.size || 'Standard',
+            paper: item.print_options?.paper || 'Standard',
+            quantity: item.quantity,
+            price: item.price,
+            imageUrl: item.image_url
+          }));
+          
+          setOrder({
+            id: orderData.id,
+            date: new Date(orderData.created_at).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            }),
+            status: orderData.status,
+            items: orderItems,
+            subtotal: orderData.total_amount - (orderData.tax || 0) - (orderData.shipping_fee || 4.99),
+            tax: orderData.tax || 0,
+            shipping: orderData.shipping_fee || 4.99,
+            total: orderData.total_amount,
+            estimatedDelivery: '3-5 business days from order date',
+            shippingAddress: orderData.shipping_details || {
+              fullName: 'John Doe',
+              addressLine1: '123 Main Street',
+              addressLine2: 'Apt 4B',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              country: 'India',
+              phone: '555-1234'
+            }
+          });
+        }
         setIsLoading(false);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Could not load order details."
-        });
       }
-    };
-    
-    loadOrder();
-  }, [id, user, toast, order]);
+    } catch (err) {
+      console.error('Error loading order:', err);
+      setError('Failed to load order details. Please try again later.');
+      setIsLoading(false);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not load order details."
+      });
+    }
+  }, [id, user, toast, order.shipping]);
+
+  useEffect(() => {
+    loadOrderData();
+  }, [loadOrderData]);
 
   const orderProgress = [
-    { id: 1, name: 'Confirmed', icon: CheckCircle, completed: true, date: order.date },
-    { id: 2, name: 'Processing', icon: Printer, completed: order.status !== 'pending', date: order.status !== 'pending' ? 'May 16, 2023' : undefined },
-    { id: 3, name: 'Ready', icon: Clock, completed: ['ready', 'shipped', 'delivered'].includes(order.status) },
-    { id: 4, name: 'Shipped', icon: Truck, completed: ['shipped', 'delivered'].includes(order.status) },
-    { id: 5, name: 'Delivered', icon: CheckCircle, completed: order.status === 'delivered' },
+    { id: 1, name: 'Confirmed', icon: CheckCircle, completed: order.status !== 'pending' && order.status !== 'cancelled', date: order.status !== 'pending' ? order.date : undefined },
+    { id: 2, name: 'Processing', icon: Printer, completed: ['processing', 'ready', 'shipped', 'delivered', 'completed'].includes(order.status), date: ['processing', 'ready', 'shipped', 'delivered', 'completed'].includes(order.status) ? 'Processing' : undefined },
+    { id: 3, name: 'Ready', icon: Clock, completed: ['ready', 'shipped', 'delivered', 'completed'].includes(order.status) },
+    { id: 4, name: 'Shipped', icon: Truck, completed: ['shipped', 'delivered', 'completed'].includes(order.status) },
+    { id: 5, name: 'Delivered', icon: CheckCircle, completed: ['delivered', 'completed'].includes(order.status) },
   ];
 
   const completedSteps = orderProgress.filter(step => step.completed).length;
@@ -704,13 +733,23 @@ const OrderDetails = () => {
                         </div>
                       </div>
                       
-                      <div className="mb-8">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="font-medium">Order Progress</span>
-                          <span className="text-sm text-gray-500">{completedSteps} of {orderProgress.length} steps completed</span>
+                      {order.status === 'cancelled' ? (
+                        <Alert variant="destructive" className="mb-6">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>Order Cancelled</AlertTitle>
+                          <AlertDescription>
+                            This order has been cancelled and will not be processed.
+                          </AlertDescription>
+                        </Alert>
+                      ) : (
+                        <div className="mb-8">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="font-medium">Order Progress</span>
+                            <span className="text-sm text-gray-500">{completedSteps} of {orderProgress.length} steps completed</span>
+                          </div>
+                          <Progress value={progressPercentage} className="h-2" />
                         </div>
-                        <Progress value={progressPercentage} className="h-2" />
-                      </div>
+                      )}
                       
                       {id === 'cart123' ? (
                         <div className="text-center p-6 bg-yellow-50 rounded-lg mb-6">
@@ -786,8 +825,8 @@ const OrderDetails = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <h3 className="text-sm font-medium text-gray-500 mb-2">Payment Method</h3>
-                          <p className="font-medium">Credit Card</p>
-                          <p className="text-gray-600 mt-1">Visa ending in 4242</p>
+                          <p className="font-medium">Razorpay</p>
+                          <p className="text-gray-600 mt-1">Payment completed</p>
                         </div>
                         
                         <div>
@@ -821,6 +860,7 @@ const OrderDetails = () => {
                   <Button 
                     className="w-full mt-4" 
                     onClick={() => setShowShippingForm(true)}
+                    disabled={order.items.length === 0}
                   >
                     Proceed to Checkout
                   </Button>

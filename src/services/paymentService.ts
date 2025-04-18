@@ -80,7 +80,7 @@ export const initiateRazorpayPayment = (options: PaymentOptions): void => {
   }
   
   const razorpayOptions = {
-    key: "rzp_test_LkPzjKRe2votRG", // Use the test key
+    key: "rzp_test_LkPzjKRe2votRG", // Use the test key provided by the user
     amount: options.amount,
     currency: options.currency || 'INR',
     name: options.name,
