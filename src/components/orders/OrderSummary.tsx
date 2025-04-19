@@ -1,4 +1,3 @@
-
 import { ShoppingBag, Truck, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -33,6 +32,7 @@ interface OrderSummaryProps {
   showCheckoutButton?: boolean;
   onRemoveItem?: (itemId: string) => void;
   isEditable?: boolean;
+  userId?: string;
 }
 
 const OrderSummary = ({ 
@@ -43,8 +43,9 @@ const OrderSummary = ({
   total = 0,
   showCheckoutButton = false,
   onRemoveItem,
-  isEditable = false
-}: OrderSummaryProps) => {
+  isEditable = false,
+  userId
+}: OrderSummaryProps & { userId?: string }) => {
   const demoItems = [
     { 
       id: '1', 
@@ -67,7 +68,6 @@ const OrderSummary = ({
 
   const itemsToShow = orderItems.length > 0 ? orderItems : demoItems;
   
-  // Calculate totals using useMemo to prevent recalculation on every render
   const calculations = useMemo(() => {
     if (orderItems.length === 0) {
       return {
@@ -188,6 +188,14 @@ const OrderSummary = ({
             <p className="text-xs text-gray-500">3-5 business days</p>
           </div>
         </div>
+
+        {showCheckoutButton && userId && (
+          <OrderSummaryActions 
+            items={orderItems.length > 0 ? orderItems : demoItems}
+            total={calculatedTotal}
+            userId={userId}
+          />
+        )}
       </CardContent>
     </Card>
   );

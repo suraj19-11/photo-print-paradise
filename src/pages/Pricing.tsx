@@ -1,15 +1,147 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Check } from 'lucide-react';
+import PricingCard from '@/components/pricing/PricingCard';
 
 const Pricing = () => {
   const [selectedTab, setSelectedTab] = useState("photos");
+
+  const photoPrints = [
+    {
+      name: "Standard Photo Prints",
+      description: "Perfect for everyday memories",
+      price: 0.25,
+      size: "4×6″",
+      paper: "Glossy",
+      features: [
+        { text: "4×6″ Glossy or Matte prints" },
+        { text: "Quick processing & printing" },
+        { text: "Standard photo paper" },
+        { text: "Bulk discounts available" }
+      ]
+    },
+    {
+      name: "Premium Photo Prints",
+      description: "Enhanced quality & finish",
+      price: 0.75,
+      size: "5×7″",
+      paper: "Premium Glossy",
+      features: [
+        { text: "Multiple sizes available" },
+        { text: "Premium photo paper" },
+        { text: "Luster or Metallic finish" },
+        { text: "Color calibration & correction" },
+        { text: "Archival quality" }
+      ],
+      isPopular: true
+    },
+    {
+      name: "Large Format Prints",
+      description: "For special displays & gifts",
+      price: 3.50,
+      size: "11×14″",
+      paper: "Professional",
+      features: [
+        { text: "11×14″ and larger sizes" },
+        { text: "Professional grade paper" },
+        { text: "Multiple paper options" },
+        { text: "Perfect for framing" }
+      ]
+    }
+  ];
+
+  const documents = [
+    {
+      name: "Black & White",
+      description: "Everyday document printing",
+      price: 0.10,
+      size: "A4",
+      paper: "Standard",
+      features: [
+        { text: "Standard A4 size" },
+        { text: "Single or double-sided" },
+        { text: "80 gsm standard paper" },
+        { text: "Volume discounts" }
+      ]
+    },
+    {
+      name: "Color Documents",
+      description: "Vibrant color printing",
+      price: 0.50,
+      size: "A4",
+      paper: "Premium",
+      features: [
+        { text: "Standard A4 size" },
+        { text: "High-quality color printing" },
+        { text: "100 gsm premium paper" },
+        { text: "Single or double-sided" },
+        { text: "Volume discounts" }
+      ],
+      isPopular: true
+    },
+    {
+      name: "Business Documents",
+      description: "Professional presentation",
+      price: 1.00,
+      size: "A4",
+      paper: "Business",
+      features: [
+        { text: "Multiple paper options" },
+        { text: "120-160 gsm paper" },
+        { text: "Binding options available" },
+        { text: "Cover pages" }
+      ]
+    }
+  ];
+
+  const canvas = [
+    {
+      name: "Small Canvas",
+      description: "Perfect for desks & shelves",
+      price: 999,
+      size: "8×10″",
+      paper: "Cotton Canvas",
+      features: [
+        { text: "8×10″ to 11×14″ sizes" },
+        { text: "Premium cotton canvas" },
+        { text: "0.75″ wooden frame" },
+        { text: "Ready to hang" }
+      ]
+    },
+    {
+      name: "Medium Canvas",
+      description: "Statement wall art",
+      price: 1999,
+      size: "16×20″",
+      paper: "Premium Canvas",
+      features: [
+        { text: "16×20″ to 20×24″ sizes" },
+        { text: "Premium cotton canvas" },
+        { text: "1.25″ wooden frame" },
+        { text: "UV-resistant coating" },
+        { text: "Ready to hang" }
+      ],
+      isPopular: true
+    },
+    {
+      name: "Large Canvas",
+      description: "Dramatic feature pieces",
+      price: 3499,
+      size: "24×36″",
+      paper: "Museum Canvas",
+      features: [
+        { text: "24×36″ and larger sizes" },
+        { text: "Museum-grade canvas" },
+        { text: "1.5″ professional frame" },
+        { text: "UV & scratch-resistant coating" },
+        { text: "Hardware included" }
+      ]
+    }
+  ];
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -34,344 +166,37 @@ const Pricing = () => {
               
               <TabsContent value="photos">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  <Card>
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-1">Standard Photo Prints</h3>
-                      <p className="text-gray-500 mb-4">Perfect for everyday memories</p>
-                      
-                      <div className="mb-6">
-                        <div className="text-3xl font-bold">₹0.25</div>
-                        <div className="text-gray-500">Starting price per print</div>
-                      </div>
-                      
-                      <ul className="space-y-3 mb-6">
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>4×6″ Glossy or Matte prints</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Quick processing & printing</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Standard photo paper</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Bulk discounts available</span>
-                        </li>
-                      </ul>
-                      
-                      <Link to="/upload">
-                        <Button className="w-full">Get Started</Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="border-primary">
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-1">Premium Photo Prints</h3>
-                      <p className="text-gray-500 mb-4">Enhanced quality & finish</p>
-                      
-                      <div className="mb-6">
-                        <div className="text-3xl font-bold">₹0.75</div>
-                        <div className="text-gray-500">Starting price per print</div>
-                      </div>
-                      
-                      <ul className="space-y-3 mb-6">
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Multiple sizes available</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Premium photo paper</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Luster or Metallic finish</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Color calibration & correction</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Archival quality</span>
-                        </li>
-                      </ul>
-                      
-                      <Link to="/upload">
-                        <Button className="w-full" variant="default">Get Started</Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-1">Large Format Prints</h3>
-                      <p className="text-gray-500 mb-4">For special displays & gifts</p>
-                      
-                      <div className="mb-6">
-                        <div className="text-3xl font-bold">₹3.50</div>
-                        <div className="text-gray-500">Starting price per print</div>
-                      </div>
-                      
-                      <ul className="space-y-3 mb-6">
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>11×14″ and larger sizes</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Professional grade paper</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Multiple paper options</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Perfect for framing</span>
-                        </li>
-                      </ul>
-                      
-                      <Link to="/upload">
-                        <Button className="w-full" variant="outline">Get Started</Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
+                  {photoPrints.map((plan, index) => (
+                    <PricingCard 
+                      key={index}
+                      {...plan}
+                      type="photos"
+                    />
+                  ))}
                 </div>
               </TabsContent>
               
               <TabsContent value="documents">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  <Card>
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-1">Black & White</h3>
-                      <p className="text-gray-500 mb-4">Everyday document printing</p>
-                      
-                      <div className="mb-6">
-                        <div className="text-3xl font-bold">₹0.10</div>
-                        <div className="text-gray-500">Per page</div>
-                      </div>
-                      
-                      <ul className="space-y-3 mb-6">
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Standard A4 size</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Single or double-sided</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>80 gsm standard paper</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Volume discounts</span>
-                        </li>
-                      </ul>
-                      
-                      <Link to="/upload">
-                        <Button className="w-full">Get Started</Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="border-primary">
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-1">Color Documents</h3>
-                      <p className="text-gray-500 mb-4">Vibrant color printing</p>
-                      
-                      <div className="mb-6">
-                        <div className="text-3xl font-bold">₹0.50</div>
-                        <div className="text-gray-500">Per page</div>
-                      </div>
-                      
-                      <ul className="space-y-3 mb-6">
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Standard A4 size</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>High-quality color printing</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>100 gsm premium paper</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Single or double-sided</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Volume discounts</span>
-                        </li>
-                      </ul>
-                      
-                      <Link to="/upload">
-                        <Button className="w-full">Get Started</Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-1">Business Documents</h3>
-                      <p className="text-gray-500 mb-4">Professional presentation</p>
-                      
-                      <div className="mb-6">
-                        <div className="text-3xl font-bold">₹1.00</div>
-                        <div className="text-gray-500">Per page</div>
-                      </div>
-                      
-                      <ul className="space-y-3 mb-6">
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Multiple paper options</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>120-160 gsm paper</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Binding options available</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Cover pages</span>
-                        </li>
-                      </ul>
-                      
-                      <Link to="/upload">
-                        <Button className="w-full" variant="outline">Get Started</Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
+                  {documents.map((plan, index) => (
+                    <PricingCard 
+                      key={index}
+                      {...plan}
+                      type="documents"
+                    />
+                  ))}
                 </div>
               </TabsContent>
               
               <TabsContent value="canvas">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  <Card>
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-1">Small Canvas</h3>
-                      <p className="text-gray-500 mb-4">Perfect for desks & shelves</p>
-                      
-                      <div className="mb-6">
-                        <div className="text-3xl font-bold">₹999</div>
-                        <div className="text-gray-500">Starting price</div>
-                      </div>
-                      
-                      <ul className="space-y-3 mb-6">
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>8×10″ to 11×14″ sizes</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Premium cotton canvas</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>0.75″ wooden frame</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Ready to hang</span>
-                        </li>
-                      </ul>
-                      
-                      <Link to="/upload">
-                        <Button className="w-full">Get Started</Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card className="border-primary">
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-1">Medium Canvas</h3>
-                      <p className="text-gray-500 mb-4">Statement wall art</p>
-                      
-                      <div className="mb-6">
-                        <div className="text-3xl font-bold">₹1,999</div>
-                        <div className="text-gray-500">Starting price</div>
-                      </div>
-                      
-                      <ul className="space-y-3 mb-6">
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>16×20″ to 20×24″ sizes</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Premium cotton canvas</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>1.25″ wooden frame</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>UV-resistant coating</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Ready to hang</span>
-                        </li>
-                      </ul>
-                      
-                      <Link to="/upload">
-                        <Button className="w-full">Get Started</Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardContent className="p-6">
-                      <h3 className="text-xl font-bold mb-1">Large Canvas</h3>
-                      <p className="text-gray-500 mb-4">Dramatic feature pieces</p>
-                      
-                      <div className="mb-6">
-                        <div className="text-3xl font-bold">₹3,499</div>
-                        <div className="text-gray-500">Starting price</div>
-                      </div>
-                      
-                      <ul className="space-y-3 mb-6">
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>24×36″ and larger sizes</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Museum-grade canvas</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>1.5″ professional frame</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>UV & scratch-resistant coating</span>
-                        </li>
-                        <li className="flex items-start">
-                          <Check className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
-                          <span>Hardware included</span>
-                        </li>
-                      </ul>
-                      
-                      <Link to="/upload">
-                        <Button className="w-full" variant="outline">Get Started</Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
+                  {canvas.map((plan, index) => (
+                    <PricingCard 
+                      key={index}
+                      {...plan}
+                      type="canvas"
+                    />
+                  ))}
                 </div>
               </TabsContent>
             </Tabs>
