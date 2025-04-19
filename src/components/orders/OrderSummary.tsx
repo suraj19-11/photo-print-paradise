@@ -1,7 +1,9 @@
+
 import { ShoppingBag, Truck, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
+import OrderSummaryActions from './OrderSummaryActions';
 import { 
   AlertDialog,
   AlertDialogAction,
