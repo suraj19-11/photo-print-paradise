@@ -11,17 +11,17 @@ declare global {
 export interface PaymentOptions {
   amount: number;        // in paise (1 INR = 100 paise)
   currency?: string;     // Default is 'INR'
-  name: string;          // Company/business name
+  name: string;         // Company/business name
   description?: string;  // Description of the purchase
-  order_id: string;      // Order ID from your backend
+  order_id: string;     // Order ID from your backend
   handler: (response: RazorpayResponse) => void;  // Success callback
   prefill?: {
-    name?: string;       // Customer name
-    email?: string;      // Customer email
-    contact?: string;    // Customer phone
+    name?: string;      // Customer name
+    email?: string;     // Customer email
+    contact?: string;   // Customer phone
   };
   theme?: {
-    color?: string;      // Color code for the payment screen
+    color?: string;     // Color code for the payment screen
   };
 }
 
@@ -80,7 +80,7 @@ export const initiateRazorpayPayment = (options: PaymentOptions): void => {
   }
   
   const razorpayOptions = {
-    key: "rzp_test_LkPzjKRe2votRG", // Use the test key provided by the user
+    key: "rzp_test_LkPzjKRe2votRG", // Use the test key provided
     amount: options.amount,
     currency: options.currency || 'INR',
     name: options.name,
@@ -89,6 +89,15 @@ export const initiateRazorpayPayment = (options: PaymentOptions): void => {
     handler: options.handler,
     prefill: options.prefill || {},
     theme: options.theme || { color: '#3399cc' },
+    modal: {
+      ondismiss: function() {
+        console.log('Payment modal closed');
+      }
+    },
+    retry: {
+      enabled: true,
+      max_count: 3
+    }
   };
 
   try {

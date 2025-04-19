@@ -1,4 +1,3 @@
-
 import { ShoppingBag, Truck, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -44,7 +43,6 @@ const OrderSummary = ({
   onRemoveItem,
   isEditable = false
 }: OrderSummaryProps) => {
-  // Example data if none is provided
   const demoItems = [
     { 
       id: '1', 
@@ -66,10 +64,19 @@ const OrderSummary = ({
   ];
 
   const itemsToShow = orderItems.length > 0 ? orderItems : demoItems;
-  const calculatedSubtotal = orderItems.length > 0 ? subtotal : 5.75;
-  const calculatedTax = orderItems.length > 0 ? tax : 0.46;
-  const calculatedShipping = orderItems.length > 0 ? shipping : 4.99;
-  const calculatedTotal = orderItems.length > 0 ? total : 11.20;
+  const calculatedSubtotal = orderItems.length > 0 
+    ? orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) 
+    : subtotal;
+  
+  const calculatedTax = orderItems.length > 0 
+    ? calculatedSubtotal * 0.08 
+    : tax;
+  
+  const calculatedShipping = orderItems.length > 0 
+    ? 4.99 
+    : shipping;
+  
+  const calculatedTotal = calculatedSubtotal + calculatedTax + calculatedShipping;
 
   return (
     <Card className="w-full">
