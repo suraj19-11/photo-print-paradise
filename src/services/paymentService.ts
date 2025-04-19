@@ -1,6 +1,7 @@
 
 import { loadScript } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { supabase, isDevelopmentMode } from '@/lib/supabase';
 
 declare global {
   interface Window {
@@ -54,17 +55,26 @@ export const initializeRazorpay = async (): Promise<boolean> => {
   }
 };
 
-// Create a Razorpay order (typically this would be done server-side)
+// Create a Razorpay order
 export const createRazorpayOrder = async (amount: number, receipt: string): Promise<CreateOrderResponse> => {
   try {
-    // In a real application, this would be a server call
-    // Since we're using the test mode, we'll mock the response
-    return {
-      id: 'order_' + Math.random().toString(36).substring(2, 15),
-      amount: amount * 100, // convert to paise
-      currency: 'INR',
-      receipt: receipt
-    };
+    if (!isDevelopmentMode) {
+      // In production, this would call a Supabase edge function
+      const { data, error } = await supabase.functions.invoke('create-razorpay-order', {
+        body: { amount: amount * 100, receipt },
+      });
+      
+      if (error) throw new Error(error.message);
+      return data;
+    } else {
+      // In development mode, mock the response
+      return {
+        id: 'order_' + Math.random().toString(36).substring(2, 15),
+        amount: amount * 100, // convert to paise
+        currency: 'INR',
+        receipt: receipt
+      };
+    }
   } catch (error) {
     console.error('Error creating Razorpay order:', error);
     throw error;
@@ -88,7 +98,7 @@ export const initiateRazorpayPayment = (options: PaymentOptions): void => {
     order_id: options.order_id,
     handler: options.handler,
     prefill: options.prefill || {},
-    theme: options.theme || { color: '#3399cc' },
+    theme: options.theme || { color: '#7c3aed' }, // Using Tailwind's purple-600
     modal: {
       ondismiss: function() {
         console.log('Payment modal closed');
@@ -97,6 +107,16 @@ export const initiateRazorpayPayment = (options: PaymentOptions): void => {
     retry: {
       enabled: true,
       max_count: 3
+    },
+    notes: {
+      address: "PrintPoint Headquarters"
+    },
+    // Add test mode indicator
+    _: {
+      test_mode: true,
+      test_card: '4111 1111 1111 1111', // For testing
+      test_expiry: '12/25',
+      test_cvv: '123'
     }
   };
 
@@ -109,18 +129,59 @@ export const initiateRazorpayPayment = (options: PaymentOptions): void => {
   }
 };
 
-// Verify Razorpay payment (typically done server-side)
+// Verify Razorpay payment
 export const verifyRazorpayPayment = async (
   paymentId: string, 
   orderId: string, 
   signature: string
 ): Promise<boolean> => {
   try {
-    // In a real application, this would be a server call to verify the payment
-    // Since we're using the test mode, we'll mock the response
-    return true;
+    if (!isDevelopmentMode) {
+      // In production, this would call a Supabase edge function
+      const { data, error } = await supabase.functions.invoke('verify-razorpay-payment', {
+        body: { paymentId, orderId, signature },
+      });
+      
+      if (error) throw new Error(error.message);
+      return data.verified;
+    } else {
+      // In development mode, mock the response
+      return true;
+    }
   } catch (error) {
     console.error('Error verifying Razorpay payment:', error);
     throw error;
+  }
+};
+
+// Store payment details in Supabase
+export const storePaymentDetails = async (
+  orderId: string,
+  paymentId: string,
+  amount: number,
+  userId: string,
+  status: string
+): Promise<boolean> => {
+  try {
+    if (!isDevelopmentMode) {
+      // Store payment details in Supabase
+      const { error } = await supabase
+        .from('payments')
+        .insert({
+          order_id: orderId,
+          payment_id: paymentId,
+          amount,
+          user_id: userId,
+          status,
+          payment_method: 'Razorpay',
+          created_at: new Date().toISOString()
+        });
+      
+      if (error) throw error;
+    }
+    return true;
+  } catch (error) {
+    console.error('Error storing payment details:', error);
+    return false;
   }
 };

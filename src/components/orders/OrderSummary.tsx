@@ -1,3 +1,4 @@
+
 import { ShoppingBag, Truck, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -13,6 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useMemo } from 'react';
 
 interface OrderSummaryProps {
   orderItems?: { 
@@ -64,19 +66,32 @@ const OrderSummary = ({
   ];
 
   const itemsToShow = orderItems.length > 0 ? orderItems : demoItems;
-  const calculatedSubtotal = orderItems.length > 0 
-    ? orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) 
-    : subtotal;
   
-  const calculatedTax = orderItems.length > 0 
-    ? calculatedSubtotal * 0.08 
-    : tax;
+  // Calculate totals using useMemo to prevent recalculation on every render
+  const calculations = useMemo(() => {
+    if (orderItems.length === 0) {
+      return {
+        calculatedSubtotal: subtotal,
+        calculatedTax: tax,
+        calculatedShipping: shipping,
+        calculatedTotal: total
+      };
+    }
+    
+    const calculatedSubtotal = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const calculatedTax = calculatedSubtotal * 0.08;
+    const calculatedShipping = 4.99;
+    const calculatedTotal = calculatedSubtotal + calculatedTax + calculatedShipping;
+    
+    return {
+      calculatedSubtotal,
+      calculatedTax,
+      calculatedShipping,
+      calculatedTotal
+    };
+  }, [orderItems, subtotal, tax, shipping, total]);
   
-  const calculatedShipping = orderItems.length > 0 
-    ? 4.99 
-    : shipping;
-  
-  const calculatedTotal = calculatedSubtotal + calculatedTax + calculatedShipping;
+  const { calculatedSubtotal, calculatedTax, calculatedShipping, calculatedTotal } = calculations;
 
   return (
     <Card className="w-full">
